@@ -79,7 +79,7 @@ def facts_for(r: ToolResult, fs: FactSheet, sub: SubTask) -> tuple[str, list[str
         if not np_:
             lines += ["No products match all constraints."] + [f"- {x}" for x in r.notes if x.startswith("without")]
             return f"No products found {_subject(r)}.", lines, ids
-        short = f"{n(np_)} products {_subject(r)}"
+        short = f"{plural(np_, 'product')} {_subject(r)}"
         if np_ and t["n_discontinued_products"] and "discontinued" not in r.description:
             short += f" ({n(t['n_discontinued_products'])} of them discontinued)"
         if " from " not in r.description:

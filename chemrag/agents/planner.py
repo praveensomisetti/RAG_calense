@@ -11,7 +11,7 @@ import re
 from chemrag.agents.context import AgentContext, Timer, event
 from chemrag.etl.normalize import norm_key
 from chemrag.llm.base import LLMPlan, LLMUnavailable, prompt, wrap_user
-from chemrag.schemas import Intent, Plan, SubTask, WarningItem
+from chemrag.schemas import EntityType, Intent, Plan, SubTask, WarningItem
 from chemrag.state import TurnState
 
 MEDICAL = re.compile(
@@ -24,16 +24,18 @@ MEDICAL = re.compile(
 DOMAIN = re.compile(
     r"\b(product|chemical|cas\b|brand|compan|cosmetic|categor|discontinu|report|ingredient|contain|trend|"
     r"data|dataset|record|row|makeup|nail|hair|skin|lip|shampoo|sunscreen|lotion|removed|reformulat|cdph|cscp|"
-    r"manufactur|substance|shade|variant|prop ?65|toxic|safe)\w*",
+    r"manufactur|substance|shade|variant|prop ?65|toxic|safe|items?|goods|lipstick|polish|perfume|fragrance)\w*",
     re.IGNORECASE,
 )
 INTENT_RULES: list[tuple[Intent, re.Pattern]] = [
     (Intent.COVERAGE, re.compile(r"\b(date range|time range|what years|which years|time period|coverage|"
                                  r"how far back|span of|cover(s|ed)?\b.*\b(years|dates|period))", re.IGNORECASE)),
     (Intent.DATA_QUALITY, re.compile(r"\b(data quality|missing|invalid|duplicat\w*|null|bad data|wrong|errors?|"
-                                     r"inconsisten\w*|malformed|dirty|look(s)? wrong)\b", re.IGNORECASE)),
+                                     r"inconsisten\w*|malformed|dirty|look(s)? wrong|data (problems?|issues?)|"
+                                     r"problems? (in|with) the data|anomal\w*)\b", re.IGNORECASE)),
     (Intent.TREND, re.compile(r"\b(trends?|over time|by year|per year|each year|over the years|annual\w*|"
-                              r"yearly|timeline|time series|year over year)\b", re.IGNORECASE)),
+                              r"yearly|timeline|time series|year over year|year by year|year-by-year|"
+                              r"changed? (over|across|through) (time|the years))\b", re.IGNORECASE)),
     (Intent.COMPARE, re.compile(r"\b(compare|comparison|compared|versus|vs\.?|difference between)\b", re.IGNORECASE)),
     (Intent.SUMMARIZE, re.compile(r"\b(summari[sz]e|summary|overview|profile|tell me about|describe)\b", re.IGNORECASE)),
     (Intent.LOOKUP, re.compile(r"\b(how many|count|number of|total)\b", re.IGNORECASE)),
@@ -62,6 +64,15 @@ def has_domain_signal(text: str, ctx: AgentContext) -> bool:
         for i in range(len(toks) - n + 1):
             g = " ".join(toks[i:i + n])
             if len(g) >= 4 and g in gaz:
+                return True
+    # misspelled chemical names ("titanium dioxyde") still count as being about the dataset
+    from rapidfuzz import fuzz, process
+
+    chems = ctx.resolver._choices.get(EntityType.CHEMICAL, [])
+    for n in (1, 2, 3):
+        for i in range(len(toks) - n + 1):
+            g = " ".join(toks[i:i + n])
+            if len(g) >= 6 and process.extractOne(g, chems, scorer=fuzz.ratio, score_cutoff=88):
                 return True
     return False
 

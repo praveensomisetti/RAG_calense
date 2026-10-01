@@ -108,7 +108,7 @@ def build_plan(state: TurnState, sub: SubTask) -> Plan:
         if pr.status == "resolved":
             for cid in pr.cdph_ids:
                 p.add("cdph_ids", cid, "product", f"'{pr.mention.text}'")
-        elif pr.status == "not_found":
+        elif pr.status == "not_found" and pr.mention.confidence >= 0.7:
             p.blockers.append(pr.note or f"product '{pr.mention.text}' not found")
     return p
 
@@ -130,8 +130,16 @@ def check_dates(dates: list[DateConstraint], ctx: AgentContext, sub_id: str
         lo, hi = ctx.engine.coverage(d.field)
         label = DATE_FIELD_LABELS[d.field]
         if (d.end and d.end < lo) or (d.start and d.start > hi):
-            out_of_range.append(f"{label} in this dataset ranges from {lo.isoformat()} to {hi.isoformat()}; "
-                                f"there is no data for '{d.source_text}'.")
+            msg = (f"{label} in this dataset ranges from {lo.isoformat()} to {hi.isoformat()}; "
+                   f"there is no data for '{d.source_text}'.")
+            if d.field == "chem_removed_date":
+                bad = ctx.engine.run_sql("dq_lookup", sub_id, {"issue": "removed_date_future"},
+                                         "SELECT count(*) AS n, min(row_id) AS sample_row_id FROM dq_issues "
+                                         "WHERE issue_code = 'removed_date_future'", [])[1][0]
+                if bad["n"]:
+                    msg += (f" Note: {bad['n']} rows carry an invalid ChemicalDateRemoved in 2103/2104 (e.g. row "
+                            f"{bad['sample_row_id']}); these are treated as 'removed, date unknown'.")
+            out_of_range.append(msg)
             continue
         start, end = d.start, d.end
         if start and start < lo or end and end > hi:

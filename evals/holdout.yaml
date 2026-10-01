@@ -1,0 +1,16 @@
+# Held-out paraphrases, written after the system was built and NOT used for tuning.
+# `gt` points at a ground-truth function in evals/ground_truth.py.
+- {id: h_list_acetaldehyde, gt: cas_acetaldehyde, q: "List the products that report acetaldehyde (CAS 75-07-0)", type: answer, entities: [Acetaldehyde]}
+- {id: h_tio2_misspelled, gt: misspelled_tio2, q: "how many items have titanium dioxyde in them", type: answer, entities: [Titanium dioxide]}
+- {id: h_retinyl_or_vit_a, gt: synonym_vitamin_a_palmitate, q: "Number of products containing retinyl palmitate or vitamin A palmitate", type: answer, entities: [Retinyl palmitate]}
+- {id: h_loreal_ingredients, gt: company_chemicals_loreal, q: "Which ingredients does L'Oreal USA report?", type: answer, entities: ["L'Oreal USA"]}
+- {id: h_disc_2015_vit_a_palm, gt: discontinued_2015_retinyl_palmitate, q: "Products discontinued during 2015 containing vitamin A palmitate", type: answer, entities: [Retinyl palmitate]}
+- {id: h_nail_yearly, gt: trend_nail_products, q: "How has reporting of nail products changed year by year?", type: answer, entities: [Nail Products]}
+- {id: h_silica_top5, gt: top_companies_silica, q: "Which 5 companies report the most products with crystalline silica?", type: answer}
+- {id: h_talc_2030, gt: discontinued_2024_out_of_range, q: "Anything discontinued in 2030 containing talc?", type: no_data, must_warn: [out_of_range_date]}
+- {id: h_glovers_unquoted, gt: product_glovers, q: "chemicals in Glovers Medicated Shampoo", type: answer}
+- {id: h_formaldehyde_danger, gt: medical_refusal, q: "Are cosmetics with formaldehyde dangerous?", type: refusal}
+- {id: h_dq_summary, gt: data_quality_cas, q: "Give me a summary of data problems in this dataset", type: answer}
+- {id: h_joke, gt: out_of_scope_weather, q: "Tell me a joke", type: refusal}
+- {id: h_revlon_removed, gt: removed_by_revlon, q: "What chemicals did Revlon remove or reformulate?", type: answer, entities: [Revlon]}
+- {id: h_bad_cas, gt: cas_bad_check_digit, q: "Which products have CAS 13463-67-8?", type: no_data, must_warn: [entity_not_found]}

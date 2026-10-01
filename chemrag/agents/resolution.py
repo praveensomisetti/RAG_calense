@@ -82,6 +82,9 @@ def retrieval_node(state: TurnState, ctx: AgentContext) -> dict:
         if m.type != EntityType.PRODUCT:
             continue
         pr = ctx.resolver.resolve_product(m, sub.id, brand_keys or None, company_keys or None)
+        if m.confidence < 0.7 and pr.status != "resolved":
+            # a guessed product phrase that does not clearly match is dropped (the brand still applies)
+            pr = pr.model_copy(update={"status": "not_found", "note": f"no specific product matched '{m.text}'"})
         if pr.status == "ambiguous" and state.options.assume_best:
             top = pr.candidates[0]
             pr = pr.model_copy(update={"status": "resolved", "cdph_ids": top["cdph_ids"],

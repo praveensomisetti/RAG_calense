@@ -5,6 +5,8 @@ Local mode allows one client per storage path per process, so clients are cached
 
 from __future__ import annotations
 
+import atexit
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -19,7 +21,11 @@ PRODUCTS = "products"
 @lru_cache(maxsize=4)
 def _client(path: str) -> QdrantClient:
     Path(path).mkdir(parents=True, exist_ok=True)
-    return QdrantClient(path=path)
+    # ~37k short-string points: local brute-force search takes milliseconds, so the size advice does not apply.
+    warnings.filterwarnings("ignore", message="Local mode is not recommended")
+    client = QdrantClient(path=path)
+    atexit.register(client.close)  # close cleanly before interpreter teardown (avoids noisy __del__)
+    return client
 
 
 class VectorStore:

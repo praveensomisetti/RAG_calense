@@ -95,8 +95,8 @@ def build_vector_index(db_path: Path, qdrant_path: Path, manifest_path: Path, mo
         prods = product_points(db_path)
         payloads = [{"product_name": p["product_name"], "product_norm": p["product_norm"],
                      "cdph_ids": [int(x) for x in p["cdph_ids"]],
-                     "brand_keys": [int(x) for x in p["brand_keys"]],
-                     "company_keys": [int(x) for x in p["company_keys"]]} for p in prods]
+                     "brand_keys": [int(x) for x in p["brand_keys"] or []],
+                     "company_keys": [int(x) for x in p["company_keys"] or []]} for p in prods]
         basis = old.get("model") == model_name and old.get("csv_sha256") == csv_sha256 and not force
         have = store.count(PRODUCTS) if basis else 0
         if have >= len(prods):

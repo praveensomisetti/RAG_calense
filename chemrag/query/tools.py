@@ -172,7 +172,7 @@ class QueryEngine:
                               description=f.describe(), totals=totals, evidence_row_ids=ev,
                               status="ok" if totals["n_products"] else "empty")
         key, label, join = GROUP_DIMENSIONS[group_by]
-        where, bound = compile_filters(f)
+        where, bound = compile_filters(f, exclude_trade_secret=group_by == "chemical")
         sql = f"""
             WITH m AS (SELECT f.* FROM fact_report f WHERE {where})
             SELECT {key} AS key, any_value({label}) AS label, count(DISTINCT m.cdph_id) AS n_products,
@@ -197,7 +197,7 @@ class QueryEngine:
 
     def chemicals_for(self, f: Filters, subtask_id: str, limit: int = 50) -> ToolResult:
         totals_id, totals = self.product_totals(f, subtask_id, tool="chemicals_for.totals")
-        where, bound = compile_filters(f)
+        where, bound = compile_filters(f, exclude_trade_secret=True)
         sql = f"""
             WITH m AS (SELECT f.* FROM fact_report f WHERE {where})
             SELECT m.chem_group_id, any_value(g.group_name) AS chemical,
@@ -218,8 +218,7 @@ class QueryEngine:
         totals["n_chemicals"] = n_groups
         notes = [f"totals from {totals_id}"]
         if not f.include_trade_secret and not f.chem_group_ids:
-            ts = f.model_copy(update={"include_trade_secret": True})
-            ts_where, ts_bound = compile_filters(ts)
+            ts_where, ts_bound = compile_filters(f)
             ts_sql = f"""SELECT count(DISTINCT f.cdph_id) AS n_products, min(f.row_id) AS sample_row_id
                          FROM fact_report f WHERE {ts_where} AND f.is_trade_secret"""
             _, ts_rows = self.run_sql("trade_secret_count", subtask_id, {"filters": f.describe()}, ts_sql, ts_bound)

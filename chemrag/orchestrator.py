@@ -32,6 +32,12 @@ class Orchestrator:
 
     def ask(self, question: str, options: RunOptions | None = None,
             on_clarify: Callable[[dict], int | None] | None = None, save: bool = True) -> Response:
+        return self.ask_full(question, options, on_clarify, save)[0]
+
+    def ask_full(self, question: str, options: RunOptions | None = None,
+                 on_clarify: Callable[[dict], int | None] | None = None,
+                 save: bool = True) -> tuple[Response, dict]:
+        """Like `ask`, but also returns the final graph state (used by evals and tests)."""
         rid = uuid.uuid4().hex[:12]
         config = {"configurable": {"thread_id": rid}, "recursion_limit": 60}
         opts = options or RunOptions()
@@ -47,7 +53,7 @@ class Orchestrator:
         resp = resp if isinstance(resp, Response) else Response.model_validate(resp)
         if save:
             self._save(resp, values)
-        return resp
+        return resp, values
 
     def _save(self, resp: Response, values: dict) -> None:
         d = self.settings.runs_dir

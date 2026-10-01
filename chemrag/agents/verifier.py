@@ -89,13 +89,18 @@ def verifier_node(state: TurnState, ctx: AgentContext) -> dict:
     allowed = allowed_numbers(state)
     fact_ids = {f.id for f in state.facts}
     short_problems = check_text(draft.answer_short, allowed, fact_ids, require_refs=False)
-    narrative = draft.answer_details
-    template_details = None
+    template_details, bullets = None, []
     for ev in reversed(state.trace):
         if ev.agent == "synthesizer":
             template_details = ev.output.get("template_details")
+            bullets = ev.output.get("llm_bullets") or []
             break
-    detail_problems = check_text(narrative, allowed, fact_ids, require_refs=draft.details_mode == "llm")
+    if draft.details_mode == "llm":
+        # LLM bullets must cite facts; the deterministic listing below them only needs grounded numbers.
+        detail_problems = check_text("\n".join(f"- {b}" for b in bullets), allowed, fact_ids, require_refs=True)
+        detail_problems += check_text(template_details or "", allowed, fact_ids, require_refs=False)
+    else:
+        detail_problems = check_text(draft.answer_details, allowed, fact_ids, require_refs=False)
     needs_evidence = [r for r in state.results if r.status == "ok" and r.tool != "dataset_coverage"]
     checks = {"short_numbers_grounded": not short_problems, "details_grounded": not detail_problems,
               "evidence_present": bool(state.evidence) or state.response_type != "answer" or not needs_evidence}

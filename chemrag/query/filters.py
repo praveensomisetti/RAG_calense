@@ -108,7 +108,7 @@ def _date_range(column: str, d: DateConstraint, params: list[Any]) -> str:
     return " AND ".join(preds)
 
 
-def compile_filters(f: Filters, alias: str = "f") -> tuple[str, list[Any]]:
+def compile_filters(f: Filters, alias: str = "f", exclude_trade_secret: bool = False) -> tuple[str, list[Any]]:
     """Return `(where_sql, params)` selecting non-duplicate fact rows that satisfy all constraints.
 
     Row-level constraints (chemical, CAS, removal) select *which rows* are evidence. Product-level
@@ -117,8 +117,9 @@ def compile_filters(f: Filters, alias: str = "f") -> tuple[str, list[Any]]:
     """
     p: list[Any] = []
     w: list[str] = [f"NOT {alias}.is_exact_dup"]
-    asks_trade_secret = f.include_trade_secret
-    if not asks_trade_secret:
+    # 'Trade Secret' rows are real product reports (they count as products) but not a chemical to list;
+    # chemical listings pass exclude_trade_secret=True and report the count separately.
+    if exclude_trade_secret and not f.include_trade_secret:
         w.append(f"NOT {alias}.is_trade_secret")
     if f.chem_group_ids:
         w.append(_in(f"{alias}.chem_group_id", f.chem_group_ids, p))

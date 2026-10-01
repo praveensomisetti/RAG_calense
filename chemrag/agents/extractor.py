@@ -44,7 +44,8 @@ GROUP_RULES = [
                                     re.IGNORECASE)),
 ]
 CHEMICAL_ASK = re.compile(r"\b(what|which|list( the)?|show( the)?|top \d+)\s+(\w+\s+)?(chemicals?|ingredients?|substances?)\b"
-                          r"|\bchemicals?\s+(are\s+|were\s+)?reported\b|\bby chemical\b", re.IGNORECASE)
+                          r"|\bchemicals?\s+(are\s+|were\s+)?reported\b|\bby chemical\b"
+                          r"|^\s*(chemicals?|ingredients?|substances?)\s+(in|of|for|reported|used|listed)\b", re.IGNORECASE)
 
 # Words that never form an entity mention on their own and are trimmed from mention edges.
 STOP = set(["a", "an", "the", "any", "all", "some", "of", "in", "on", "for", "by", "from", "with", "to", "and", "or", "that", "which", "what", "who", "whose", "how", "many", "much", "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "has", "have", "had", "contain", "contains", "containing", "contained", "include", "includes", "including", "included", "list", "lists", "listed", "show", "shows", "give", "me", "tell", "about", "products", "product", "items", "item", "records", "record", "rows", "row", "chemicals", "chemical", "ingredient", "ingredients", "substance", "substances", "reported", "report", "reports", "reporting", "brand", "brands", "company", "companies", "category", "categories", "subcategory", "subcategories", "cosmetic", "cosmetics", "there", "their", "its", "it", "they", "them", "those", "these", "this", "please", "number", "count", "total", "also", "still", "ever", "were", "discontinued", "removed", "reformulated", "year", "years", "between", "since", "before", "after", "during", "until", "through", "most", "least", "top", "per", "each", "trend", "trends", "over", "time", "compare", "versus", "vs", "summarize", "summary", "overview", "cas", "data", "dataset", "sold", "made", "makes", "make", "using", "use", "used", "currently", "first", "initially", "recently", "new", "added", "introduced", "not", "no", "only", "chemicalname", "chemical_name", "casnumber", "cas_number", "brandname", "companyname", "productname", "=", "had", "having"])
@@ -52,7 +53,7 @@ STOP = set(["a", "an", "the", "any", "all", "some", "of", "in", "on", "for", "by
 COMMON_SINGLE = STOP | set(["pure", "bare", "mineral", "natural", "organic", "professional", "beauty", "classic", "basic", "fresh", "color", "colors", "nail", "nails", "hair", "skin", "lip", "lips", "eye", "eyes", "face", "body", "baby", "sun", "care", "essentials", "lipstick", "shampoo", "polish", "cream", "lotion", "spray", "oil", "gel", "powder", "foundation", "mascara", "sunscreen", "makeup", "make", "up", "kids", "men", "women", "spa", "salon", "studio"])
 
 CUE_CHEMICAL = re.compile(
-    r"\b(?:contain(?:s|ing|ed)?|with|includ(?:e|es|ing|ed)|has|had|have|chemical(?:\s*name)?\s*(?:=|is|of)?|"
+    r"\b(?P<v>contain(?:s|ing|ed)?|with|includ(?:e|es|ing|ed)|has|had|have|chemical(?:\s*name)?\s*(?:=|is|of)?|"
     r"ingredient)\s+(?P<x>[^,;?]+?)(?=\s+(?:in|for|by|from|and|or|that|which|were|was|is|are|during|between|"
     r"since|before|after|discontinued|removed|over|across|under)\b|[,;?]|\.(?:\s|$)|$)", re.IGNORECASE)
 CUE_BRAND = re.compile(r"\bbrand\s+(?:name\s+)?[\"“']?(?P<x>[^,;?\"”']+?)[\"”']?(?=\s+(?:in|for|by|from|and|that|which|"
@@ -178,6 +179,37 @@ def gazetteer_mentions(text: str, ctx: AgentContext, blocked: list[tuple[int, in
     return mentions, spans
 
 
+CATEGORY_WORDS = re.compile(
+    r"\b(?:(?:nail|lip|eye|hair|face|body|baby|sun|bath|shaving|tattoo)\s+)?(?:polish(?:es)?|lipsticks?|lip ?gloss|"
+    r"lip ?balm|shampoos?|conditioners?|foundations?|mascaras?|sunscreens?|lotions?|eye ?shadows?|eyeliners?|"
+    r"blush(?:es)?|hair (?:dyes?|colou?rs?)|soaps?|deodorants?|toothpastes?|fragrances?|perfumes?|"
+    r"bronzers?|concealers?|primers?|nail (?:products?|care))\b", re.I)
+
+BRAND_TAIL = re.compile(r"^\s+((?:[\w'&.+-]+\s*){1,6}?)(?=\s+(?:in|for|by|from|and|or|that|which|with|were|was|is|are|"
+                        r"have|has|had|contain\w*)\b|[,;?!]|\.(?:\s|$)|$)", re.I)
+
+
+def brand_product_guesses(text: str, gz: list[Mention], spans: list[tuple[int, int]]
+                          ) -> tuple[list[Mention], list[tuple[int, int]]]:
+    """'glovers medicated shampo' -> also try the product 'glovers medicated shampo' (brand-constrained).
+
+    Low confidence, so if no product matches it is ignored rather than blocking the brand answer.
+    """
+    out, out_spans = [], []
+    for m, (start, end) in zip(gz, spans):
+        if m.type != EntityType.BRAND:
+            continue
+        tail = BRAND_TAIL.match(text[end:])
+        if not tail:
+            continue
+        words = tail.group(1).split()
+        if any(w.casefold() not in COMMON_SINGLE for w in words):
+            out.append(Mention(type=EntityType.PRODUCT, text=f"{m.text} {' '.join(words)}", source="cue",
+                               confidence=0.6))
+            out_spans.append((start, end + tail.end(1)))
+    return out, out_spans
+
+
 def cue_mentions(text: str, original: str, existing: list[Mention]) -> list[Mention]:
     have = {norm_key(m.text) for m in existing}
     out: list[Mention] = []
@@ -199,7 +231,9 @@ def cue_mentions(text: str, original: str, existing: list[Mention]) -> list[Ment
     for m in CUE_COMPANY.finditer(text):
         add(EntityType.COMPANY, m.group("x"), 0.85)
     for m in CUE_CHEMICAL.finditer(text):
-        add(EntityType.CHEMICAL, m.group("x"), 0.7)
+        # "contains X" / "chemical X" clearly names a chemical; "has/with X" is weaker (non-blocking if unmatched)
+        strong = m.group("v").lower().startswith(("contain", "chemical", "ingredient"))
+        add(EntityType.CHEMICAL, m.group("x"), 0.75 if strong else 0.6)
     for m in CUE_PROPER.finditer(text):
         add(EntityType.UNKNOWN, m.group("x"), 0.6)
     return out
@@ -243,6 +277,16 @@ def rules_extract(text: str, intent: Intent, subtask_id: str, ctx: AgentContext)
     gz, gspans = gazetteer_mentions(text, ctx, spans, neg_spans)
     mentions += gz
     spans += gspans
+    guesses, guess_spans = brand_product_guesses(text, gz, gspans)
+    mentions += guesses
+    spans += guess_spans
+    if not any(m.type in (EntityType.SUBCATEGORY, EntityType.PRIMARY_CATEGORY) for m in mentions):
+        blanked = _blank(text, spans)
+        for m in CATEGORY_WORDS.finditer(blanked):
+            mentions.append(Mention(type=EntityType.SUBCATEGORY, text=m.group(0).strip(), source="cue",
+                                    confidence=0.65))
+            spans.append(m.span())
+            break
     # Quoted product names and cue phrases run on the text with matched spans blanked out.
     mentions += cue_mentions(_blank(text, spans), text, mentions)
     group_by = [g for g, pat in GROUP_RULES if pat.search(text)]

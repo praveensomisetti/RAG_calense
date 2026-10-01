@@ -134,12 +134,14 @@ def replay(request_id: str) -> None:
 
 @app.command(name="eval")
 def run_eval(no_llm: bool = typer.Option(False, "--no-llm"), only: str = typer.Option("", help="Comma-separated ids"),
+             holdout: bool = typer.Option(False, "--holdout", help="Run the held-out paraphrase set."),
              out: str = typer.Option("evals/results", help="Output directory.")) -> None:
     """Run the golden evaluation set and write a markdown + JSON report."""
     sys.path.insert(0, str(ROOT))
     from evals.run_eval import main
 
-    raise typer.Exit(main(no_llm=no_llm, only=[x for x in only.split(",") if x], out_dir=ROOT / out))
+    raise typer.Exit(main(no_llm=no_llm, only=[x for x in only.split(",") if x], out_dir=ROOT / out,
+                          set_name="holdout" if holdout else "golden"))
 
 
 @app.command()
