@@ -1,0 +1,219 @@
+(114635, 22)
+['CDPHId', 'ProductName', 'CSFId', 'CSF', 'CompanyId', 'CompanyName', 'BrandName', 'PrimaryCategoryId', 'PrimaryCategory', 'SubCategoryId', 'SubCategory', 'CasId', 'CasNumber', 'ChemicalId', 'ChemicalName', 'InitialDateReported', 'MostRecentDateReported', 'DiscontinuedDate', 'ChemicalCreatedAt', 'ChemicalUpdatedAt', 'ChemicalDateRemoved', 'ChemicalCount']
+                                                                       0  ...                                         2
+CDPHId                                                                 2  ...                                         3
+ProductName             ULTRA COLOR RICH EXTRA PLUMP LIPSTICK-ALL SHADES  ...                Glover's Medicated Shampoo
+CSFId                                                                NaN  ...                                       NaN
+CSF                                                                  NaN  ...                                       NaN
+CompanyId                                                              4  ...                                       338
+CompanyName                                                 New Avon LLC  ...                       J. Strickland & Co.
+BrandName                                                           AVON  ...                                  Glover's
+PrimaryCategoryId                                                     44  ...                                        18
+PrimaryCategory                          Makeup Products (non-permanent)  ...         Hair Care Products (non-coloring)
+SubCategoryId                                                         53  ...                                        25
+SubCategory                   Lip Color - Lipsticks, Liners, and Pencils  ...  Hair Shampoos (making a cosmetic claim) 
+CasId                                                                656  ...                                       293
+CasNumber                                                     13463-67-7  ...                                  140-67-0
+ChemicalId                                                             6  ...                                         5
+ChemicalName                                            Titanium dioxide  ...                                 Estragole
+InitialDateReported                                           06/17/2009  ...                                07/01/2009
+MostRecentDateReported                                        08/28/2013  ...                                07/01/2009
+DiscontinuedDate                                              02/01/2011  ...                                       NaN
+ChemicalCreatedAt                                             07/09/2009  ...                                07/02/2009
+ChemicalUpdatedAt                                             07/09/2009  ...                                07/02/2009
+ChemicalDateRemoved                                                  NaN  ...                                       NaN
+ChemicalCount                                                          1  ...                                         2
+
+[22 rows x 3 columns]
+nulls:
+ CDPHId                         0
+ProductName                    0
+CSFId                      33973
+CSF                        33973
+CompanyId                      0
+CompanyName                    0
+BrandName                    171
+PrimaryCategoryId              0
+PrimaryCategory                0
+SubCategoryId                  0
+SubCategory                    0
+CasId                          0
+CasNumber                   6476
+ChemicalId                     0
+ChemicalName                   0
+InitialDateReported            0
+MostRecentDateReported         0
+DiscontinuedDate          101715
+ChemicalCreatedAt              0
+ChemicalUpdatedAt              0
+ChemicalDateRemoved       111650
+ChemicalCount                  0
+dtype: int64
+nunique:
+ CDPHId                    36972
+ProductName               33716
+CSFId                     58167
+CSF                       34328
+CompanyId                   635
+CompanyName                 606
+BrandName                  2716
+PrimaryCategoryId            13
+PrimaryCategory              13
+SubCategoryId                92
+SubCategory                  89
+CasId                       134
+CasNumber                   125
+ChemicalId                58079
+ChemicalName                123
+InitialDateReported        2274
+MostRecentDateReported     2178
+DiscontinuedDate            991
+ChemicalCreatedAt          2320
+ChemicalUpdatedAt          2326
+ChemicalDateRemoved         524
+ChemicalCount                10
+dtype: int64
+full dup rows 254
+dup (CDPHId,CSFId,ChemicalId) 9332
+ChemicalId unique per row? 58079
+CasNumber
+13463-67-7    93049
+NaN            6476
+79-81-2        2288
+1333-86-4      2191
+12001-26-2     1919
+25013-16-5     1888
+14807-96-6     1499
+68603-42-9     1343
+0               668
+102-71-6        455
+Name: count, dtype: int64
+TiO2 share 0.811697997993632
+names>1 CAS 14
+ChemicalName
+Carbon black (airborne, unbound particles of respirable size)                                           3
+Coal Tar                                                                                                2
+Cocamide diethanolamine                                                                                 5
+Methylene glycol                                                                                        2
+Methyleugenol                                                                                           3
+Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.     6
+Retinyl palmitate                                                                                       8
+Selenium sulfide                                                                                        2
+Talc                                                                                                    2
+Titanium dioxide                                                                                       10
+Vitamin A                                                                                               3
+Vitamin A palmitate                                                                                     2
+o-Phenylenediamine and its salts                                                                        2
+p-Aminodiphenylamine                                                                                    2
+Name: CasNumber, dtype: int64
+CAS>1 name 7
+11103-57-4 <StringArray>
+['Vitamin A', 'Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.']
+Length: 2, dtype: str
+120-40-1 <StringArray>
+['Lauramide diethanolamine', 'Lauramide DEA']
+Length: 2, dtype: str
+127-47-9 <StringArray>
+['Acetic acid, retinyl ester', 'Retinyl acetate']
+Length: 2, dtype: str
+1333-86-4 <StringArray>
+['Carbon black (airborne, unbound particles of respirable size)', 'Carbon black']
+Length: 2, dtype: str
+68-26-8 <StringArray>
+['Retinol', 'Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.']
+Length: 2, dtype: str
+79-81-2 <StringArray>
+['Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.',
+                                                                                 'Vitamin A palmitate',
+                                                                                   'Retinyl palmitate']
+Length: 3, dtype: str
+8007-45-2 <StringArray>
+['Coal Tar', 'Coal tar extract']
+Length: 2, dtype: str
+null CAS by name:
+ ChemicalName
+Silica, crystalline (airborne particles of respirable size)                                            2817
+Retinyl palmitate                                                                                      1111
+Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.     766
+Mineral oils, untreated and mildly treated                                                              516
+Cocamide DEA                                                                                            234
+Titanium dioxide                                                                                        210
+Cosmetic talc                                                                                           189
+Aloe vera, whole leaf extract                                                                           143
+Titanium dioxide (airborne, unbound particles of respirable size)                                        84
+Coffee                                                                                                   80
+Name: count, dtype: int64
+BrandName null default-na: 227 literal strings: <StringArray>
+['NA', 'None', 'N/A']
+Length: 3, dtype: str
+TiO2 CAS variants: {'13463-67-7': 93049, nan: 210, '1317-70-0': 74, '13463-67-7 ': 72, '98084-96-9': 46, '13463-67-7  ': 12, '13463-67-': 9, '1317-80-2': 3, '13463677': 2, 'RN: 13463-67': 2, 'RN:  13463 6': 1}
+CAS not matching pattern: {'0': 668, '13463-67-7 ': 72, '13463-67-7  ': 12, 'CAS # 79-81-': 9, '13463-67-': 9, '11103-57-438': 7, '1333-86-4 ': 5, '201-228-5': 3, 'RN:  93�15�2': 3, '93 15 2': 3, '7440-43-10': 2, '79812': 2, 'CAS #79-81-2': 2, '13463677': 2, 'RN: 13463-67': 2, '1333-86-4  ': 2, '79-818-2': 1, '11103-57-538': 1, 'CAS#79-81-2': 1, '79-8-12': 1, '101--54-2': 1, 'asdf': 1, 'RN:  13463 6': 1, '50-78-25': 1, ' 79-81-2': 1, '14807-96-6 ': 1}
+CasId per CasNumber>1: {'11103-57-4': 2, '120-40-1': 2, '127-47-9': 2, '1333-86-4': 2, '68-26-8': 2, '79-81-2': 3, '8007-45-2': 2}
+CompanyName w/ >1 CompanyId: 22
+CompanyId w/ >1 name: 0
+SubCategory >1 Id: {'Hair Conditioners (leave-in)': 2, 'Hair Conditioners (rinse-out)': 2, 'Hair Shampoos (making a cosmetic claim) ': 2}
+SubCategory trailing ws: 9657 distinct stripped 89
+subcat in >1 primary: 3
+{'Makeup Products (non-permanent)': 75827, 'Nail Products': 15347, 'Skin Care Products ': 7683, 'Sun-Related Products': 4939, 'Bath Products': 3466, 'Hair Coloring Products': 2061, 'Hair Care Products (non-coloring)': 1620, 'Tattoos and Permanent Makeup': 1477, 'Personal Care Products': 765, 'Fragrances': 654, 'Oral Hygiene Products': 525, 'Shaving Products': 222, 'Baby Products': 49}
+CompanyName ws: 0 distinct 606 casefold+strip 604
+BrandName ws: 4021 distinct 2716 casefold+strip 2396
+ProductName ws: 67 distinct 33716 casefold+strip 33451
+brands under >1 company: 117
+CDPHId: >1 product name 0 >1 company 0 >1 subcat 2670 >1 InitialDate 13 >1 Discontinued 0
+ChemicalId -> >1 CDPHId 113 >1 CasId 0
+rows per ChemicalId {'count': 58079.0, 'mean': 1.9737770967130976, 'std': 6.722991394284116, 'min': 1.0, '25%': 1.0, '50%': 1.0, '75%': 1.0, 'max': 766.0}
+ChemicalCount values {'1': 87267, '2': 21266, '3': 3528, '4': 1481, '0': 869, '5': 105, '8': 41, '7': 36, '6': 33, '9': 9}
+CC==distinct CasId: 0.9758736341014822
+InitialDateReported: n=114635 unparsable=0 min=2009-06-17 max=2020-06-23 >2021=0 <2009=0
+   by year: {2009: 30680, 2010: 14778, 2011: 4533, 2012: 3742, 2013: 6377, 2014: 8483, 2015: 7788, 2016: 4494, 2017: 7685, 2018: 9615, 2019: 13877, 2020: 2583}
+MostRecentDateReported: n=114635 unparsable=0 min=2009-07-01 max=2020-06-24 >2021=0 <2009=0
+   by year: {2009: 4831, 2010: 21365, 2011: 4497, 2012: 3265, 2013: 12439, 2014: 7768, 2015: 7065, 2016: 8106, 2017: 7962, 2018: 12821, 2019: 20779, 2020: 3737}
+DiscontinuedDate: n=12920 unparsable=0 min=2001-01-01 max=2020-06-12 >2021=0 <2009=739
+   by year: {2001: 2, 2004: 21, 2005: 6, 2006: 18, 2007: 279, 2008: 413, 2009: 860, 2010: 1144, 2011: 1186, 2012: 983, 2013: 1887, 2014: 1628, 2015: 1187, 2016: 2137, 2017: 713, 2018: 276, 2019: 176, 2020: 4}
+ChemicalCreatedAt: n=114635 unparsable=0 min=2009-07-01 max=2020-06-23 >2021=0 <2009=0
+   by year: {2009: 29193, 2010: 14873, 2011: 4611, 2012: 3675, 2013: 6696, 2014: 8614, 2015: 7744, 2016: 4775, 2017: 7385, 2018: 9535, 2019: 14848, 2020: 2686}
+ChemicalUpdatedAt: n=114635 unparsable=0 min=2009-07-01 max=2020-06-24 >2021=0 <2009=0
+   by year: {2009: 27159, 2010: 11951, 2011: 4049, 2012: 3730, 2013: 8520, 2014: 10376, 2015: 8470, 2016: 5356, 2017: 6867, 2018: 9287, 2019: 15977, 2020: 2893}
+ChemicalDateRemoved: n=2985 unparsable=0 min=2000-01-01 max=2104-05-02 >2021=115 <2009=3
+   by year: {2000: 1, 2006: 2, 2009: 824, 2010: 341, 2011: 160, 2012: 146, 2013: 551, 2014: 106, 2015: 70, 2016: 266, 2017: 98, 2018: 139, 2019: 111, 2020: 55, 2103: 114, 2104: 1}
+Recent<Initial 0
+Discontinued<Initial 2866
+Removed<Created 192
+Updated<Created 0
+      CDPHId CSFId  ...  ChemicalName                                 ProductName
+6604    2015   NaN  ...  Trade Secret          BubbleGum Bubbles No Tears Shampoo
+12038   2902   NaN  ...  Trade Secret  FDS Feminine Deodorant Spray White Blossom
+12149   2930   NaN  ...  Trade Secret                  Lash Primer - Confidential
+12150   2930   NaN  ...  Trade Secret                  Lash Primer - Confidential
+12184   2933   NaN  ...  Trade Secret   FDS Feminine Deodorant Spray Ocean Breeze
+12186   2935   NaN  ...  Trade Secret   FDS Feminine Deodorant Spray Shower Fresh
+
+[6 rows x 5 columns]
+dup-triple groups: 8033 differing cols: {'PrimaryCategoryId': np.int64(3705), 'PrimaryCategory': np.int64(3705), 'SubCategoryId': np.int64(7819), 'SubCategory': np.int64(7819), 'ChemicalUpdatedAt': np.int64(1), 'ChemicalDateRemoved': np.int64(4)}
+dup triples with null CSFId: 0.31661387849121797
+CSF per CDPHId desc: {'count': 36972.0, 'mean': 1.573271665043817, 'std': 7.4256559955940675, 'min': 0.0, '25%': 0.0, '50%': 0.0, '75%': 1.0, 'max': 766.0}
+CSFId null but CSF not: 0
+ChemicalCount 0 rows sample: {'ChemicalName': 1.0, 'ChemicalDateRemoved': 1.0}
+products per ChemicalName (top): {'Titanium dioxide': 32010, 'Silica, crystalline (airborne particles of respirable size)': 1358, 'Cocamide diethanolamine': 898, 'Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.': 726, 'Carbon black': 718, 'Mica': 678, 'Talc': 586, 'Retinyl palmitate': 519}
+TiO2 share of products: 0.866980417613329
+all chem names:
+['1,4-Dioxane', '2,2-Bis(bromomethyl)-1,3-propanediol', '2,4-Hexadienal (89% trans, trans isomer; 11% cis, trans isomer)', '2-Propyleneacrolein', 'Acetaldehyde', 'Acetic acid, retinyl ester', 'Acetylsalicylic acid', 'Acrylamide', 'All-trans retinoic acid', 'Aloe vera, non-decolorized whole leaf extract', 'Aloe vera, whole leaf extract', 'Arsenic (inorganic arsenic compounds)', 'Arsenic (inorganic oxides)', 'Aspirin', 'Avobenzone', 'Benz[a]anthracene', 'Benzene', 'Benzo[a]pyrene', 'Benzophenone', 'Benzophenone-2', 'Benzophenone-3', 'Benzophenone-4', 'Benzyl chloride', 'Bisphenol A (BPA)', 'Butylated hydroxyanisole', 'C.I. Acid Red 114', 'Cadmium and cadmium compounds', 'Caffeic acid', 'Caffeine', 'Carbon black', 'Carbon black (airborne, unbound particles of respirable size)', 'Carbon-black extracts', 'Chromium (hexavalent compounds)', 'Coal Tar', 'Coal tar extract', 'Coal tar solution', 'Coal tars', 'Cocamide', 'Cocamide DEA', 'Cocamide MEA', 'Cocamide diethanolamine', 'Cocamide diethanolamine (DEA)', 'Coffea arabica extract', 'Coffee', 'Coffee bean extract', 'Coffee extract', 'Cosmetic talc', 'Di-n-butyl phthalate (DBP)', 'Dichloroacetic acid', 'Dichloromethane (Methylene chloride)', 'Diethanolamides of the fatty acids of coconut oil', 'Diethanolamine', 'Distillates (coal tar)', 'Estragole', 'Ethanol in alcoholic beverages', 'Ethyl acrylate', 'Ethylene glycol', 'Ethylene oxide', 'Extract of coffee bean', 'Formaldehyde', 'Formaldehyde (gas)', 'Formaldehyde solution', 'Genistein (purified)', 'Ginkgo biloba extract', 'Goldenseal root powder', 'Hydrous magnesium silicate', 'Isopropyl alcohol manufacture using strong acids', 'Lauramide DEA', 'Lauramide diethanolamine', 'Lead', 'Lead acetate', 'Mercury and mercury compounds', 'Methanol', 'Methyl chloride', 'Methylene glycol', 'Methyleugenol', 'Mica', 'Mineral oils, untreated and mildly treated', 'Musk xylene', 'N,N-Dimethyl-p-toluidine', 'N-Methylpyrrolidone', 'N-Nitrosodiethanolamine', 'N-Nitrosodimethylamine', 'Nickel (Metallic)', 'Oil Orange SS', 'Permethrin', 'Phenacemide', 'Phenacetin', 'Polygeenan', 'Progesterone', 'Propylene glycol mono-t-butyl ether', 'Propylene oxide', 'Pulegone', 'Quartz', 'Quinoline and its strong acid salts', 'Retinol', 'Retinol palmitate', 'Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents.', 'Retinyl acetate', 'Retinyl palmitate', 'Safrole', 'Selenium sulfide', 'Silica, crystalline (airborne particles of respirable size)', 'Sodium Bromate', 'Spironolactone', 'Styrene', 'TEA-Lauryl Sulfate', 'Talc', 'Talc (powder)', 'Talc containing asbestiform fibers', 'Titanium dioxide', 'Titanium dioxide (airborne, unbound particles of respirable size)', 'Toluene', 'Trade Secret', 'Trichloroacetic acid', 'Triethanolamine', 'Vinyl acetate', 'Vitamin A', 'Vitamin A palmitate', 'beta-Myrcene', 'o-Phenylenediamine and its salts', 'o-Phenylphenol', 'p-Aminodiphenylamine']
+75-07-0 rows 56 products 30 <StringArray>
+['Acetaldehyde']
+Length: 1, dtype: str
+CasId->names 1  CasId->CasNumber>1 14
+name->CasId>1 7
+2103/2104 removed: dates <StringArray>
+['12/05/2103', '05/02/2104']
+Length: 2, dtype: str companies 2 {'Sunrider Manufacturing, L.P.': 114, 'Buth-na-Bodhaige, Inc': 1}
+same name diff ids e.g. ['Added Extras LLC', 'Alessandro International GmbH', 'American International Industries', 'Combe Incorporated']
+Trade Secret rows 668 CAS <StringArray>
+['0']
+Length: 1, dtype: str
+CAS '0' names {'Trade Secret': 668}
+brand casing ex: <StringArray>
+['Sally Hansen', 'Sally Hansen ']
+Length: 2, dtype: str
+top companies by products {'American International Industries': 1964, 'Nail Alliance - Entity': 1583, 'Revlon Consumer Product Corporation': 1458, 'AMOREPACIFIC US INC.': 1084, "L'Oreal USA": 1052}
+discontinued products 4569 removed product-chem rows 2985
+ProductName ambiguity: names w/ >1 CDPHId 1793
