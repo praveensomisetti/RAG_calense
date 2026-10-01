@@ -3,15 +3,29 @@
 > Status: **DRAFT for review**. No implementation code has been written yet. Only the exploration script
 > (`scripts/profile_data.py`) and its output (`docs/profiling_output.txt`) are committed.
 > Please review §13 (open questions) before I start building.
+>
+> **Revision 2 (stack decisions from review):**
+> - **Embeddings:** `thenlper/gte-large`
+> - **LLM:** Google **Gemini**
+> - **Vector DB:** **Qdrant**
+> - **Orchestration:** **LangGraph**
+>
+> Sections 0, 3, 4.3, 5, 9, 11, 12 and 13 are updated to match.
 
 ---
 
 ## 0. TL;DR of the design
 
 - **Storage:** I load the CSV once into **DuckDB** as a cleaned fact table plus canonical dimension tables. Every source row gets a stable `row_id` (its 1-based ordinal in the CSV), and all citations point at it.
-- **Orchestration:** a **plain-Python pipeline** with a single typed `TurnState` (Pydantic) that each agent reads and appends to. There is no LangGraph. The trace *is* the state object.
-- **Where the LLM is used:** the LLM appears only where language understanding is needed: intent and decomposition, free-text entity extraction, and narrative phrasing. Everything that produces a *number* or an *ID* is deterministic code. If no LLM key is set, rule-based fallbacks run every stage end-to-end.
-- **Entity resolution:** curated canonical tables for chemicals, companies, brands and categories, plus a **CAS normaliser with check-digit validation**, plus **rapidfuzz** (lexical) and **local sentence-transformers** (semantic) over *entity names only* (~3.2k strings, not 114k rows).
+- **Orchestration:** a **LangGraph `StateGraph`**.
+  - Each agent is a node.
+  - Routing decisions are conditional edges driven by deterministic router functions.
+  - One typed `TurnState` (Pydantic) flows through the graph, and its append-only `trace` is the query plan.
+  - LangGraph's `interrupt()` plus a checkpointer implements interactive clarification.
+- **Where the LLM is used:** the LLM is **Gemini**, called via the `google-genai` SDK with JSON-schema structured output. It appears only where language understanding is needed: intent and decomposition, free-text entity extraction, and narrative phrasing. Everything that produces a *number* or an *ID* is deterministic code. If no LLM key is set, rule-based fallbacks run every stage end-to-end.
+- **Entity resolution:** curated canonical tables for chemicals, companies, brands and categories, plus a **CAS normaliser with check-digit validation**, plus **rapidfuzz** (lexical) and **`thenlper/gte-large` embeddings stored in Qdrant** (semantic).
+  - Qdrant holds entity names (~3.3k) and product names (~33.7k), never the 114k rows.
+  - Qdrant runs in embedded local mode by default, so no server is needed. Setting `QDRANT_URL` points it at a server instead.
 - **Querying:** a fixed library of **parameterised query tools** compiled from a typed `Filters` object. The LLM never writes SQL. The executed SQL and its bound params are recorded in the query plan.
 - **Answer synthesis:** `answer_short` is **templated from query results**. `answer_details` may be LLM-written, but a **deterministic verifier** checks every number and entity against the fact sheet. If the check fails, the system falls back to the templated text and attaches a warning.
 
@@ -159,16 +173,20 @@ dataset_meta        -- coverage ranges per date column, build hash, source file 
 
 ## 3. Architecture
 
+Every box below is a **LangGraph node**. Dashed labels are **conditional edges**. DuckDB and Qdrant are data stores that the nodes call; they are not nodes.
+
 ```mermaid
 flowchart TD
     U[User question<br/>CLI / HTTP] --> G0[Input guard<br/>length, injection heuristics, scope pre-check]
     G0 --> P[Planner / Orchestrator<br/>intent + decomposition<br/>LLM w/ rule fallback]
     P -->|sub-tasks| X[Entity & Constraint Extractor<br/>regex + gazetteer + LLM]
-    X --> R[Entity Resolver / Semantic Retrieval<br/>CAS normaliser, alias table,<br/>rapidfuzz + MiniLM embeddings]
+    X --> R[Entity Resolver / Semantic Retrieval<br/>CAS normaliser, alias table,<br/>rapidfuzz + gte-large → Qdrant]
     R -->|ambiguous & material| CL[Clarification response]
     R --> Q[Structured Query Agent<br/>parameterised tool library]
-    R -->|open-ended / product text| RT[Record Retrieval<br/>product-name FTS + fuzzy]
+    R -->|open-ended / product text| RT[Record Retrieval<br/>Qdrant products + DuckDB FTS + fuzzy]
     RT --> Q
+    R -.-> VDB[(Qdrant<br/>entities + products<br/>gte-large 1024-d)]
+    RT -.-> VDB
     Q --> DB[(DuckDB<br/>read-only)]
     Q --> S[Answer Synthesizer<br/>templated short answer +<br/>LLM narrative from fact sheet]
     S --> V[Verifier / Guardrail<br/>numbers, entities, citations,<br/>scope & medical-advice check]
@@ -185,6 +203,41 @@ flowchart TD
     S -.-> ST
     V -.-> ST
 ```
+
+### 3.0 LangGraph wiring
+
+```python
+g = StateGraph(TurnState)
+for name, node in [("guard", guard), ("planner", planner), ("extractor", extractor),
+                   ("resolver", resolver), ("retrieval", record_retrieval), ("query", query_agent),
+                   ("synthesizer", synthesizer), ("verifier", verifier),
+                   ("clarify", clarify), ("refuse", refuse), ("finalize", finalize)]:
+    g.add_node(name, node)
+
+g.add_edge(START, "guard")
+g.add_conditional_edges("guard",    route_after_guard,    {"ok": "planner", "refuse": "refuse"})
+g.add_conditional_edges("planner",  route_after_planner,  {"extract": "extractor", "refuse": "refuse",
+                                                           "clarify": "clarify", "meta": "query"})
+g.add_edge("extractor", "resolver")
+g.add_conditional_edges("resolver", route_after_resolver, {"sql": "query", "hybrid": "retrieval",
+                                                           "clarify": "clarify", "no_data": "synthesizer"})
+g.add_edge("retrieval", "query")
+g.add_conditional_edges("query",    route_after_query,    {"next_subtask": "extractor", "done": "synthesizer"})
+g.add_edge("synthesizer", "verifier")
+g.add_conditional_edges("verifier", route_after_verifier, {"pass": "finalize", "fallback": "finalize"})
+g.add_edge("clarify", "finalize"); g.add_edge("refuse", "finalize"); g.add_edge("finalize", END)
+app = g.compile(checkpointer=MemorySaver())
+```
+
+**How LangGraph is used:**
+- **Router functions are plain, deterministic Python.** `route_after_resolver(state) -> str` looks at resolution statuses and intent; no LLM is involved. These are the routing rules in §3.2, and each is unit-tested on its own.
+- **Multi-part questions** loop `query → extractor` once per sub-task, and `state.current_subtask` advances each time. I'm not using `Send` fan-out: sub-tasks are ≤4 and sometimes depend on each other (compare), so a sequential loop is easier to trace.
+- **Clarification.**
+  - In the interactive CLI, the `clarify` node calls `interrupt(payload)`. The CLI shows the candidates, and the user's choice resumes the graph (`Command(resume=choice)`) back into `resolver`.
+  - In `--json` or API mode, the `clarify` node returns a `clarification` response, or proceeds with the top match when `--assume-best` is set.
+- **Tracing.** Each node appends a `TraceEvent` to `state.trace`, and the `query_plan[]` output is built from it. LangSmith is **not required**, but setting `LANGSMITH_API_KEY` turns it on for free with no code change.
+- **No LangChain LLM wrappers.** Nodes call the thin `LLMClient` (§9), which wraps `google-genai` directly. That keeps the dependency surface small and makes the Gemini call explicit.
+- `app.get_graph().draw_mermaid()` is exported to `docs/graph.md`, so the diagram in the README is generated from the real graph.
 
 ### 3.1 Shared state
 
@@ -205,7 +258,11 @@ class TurnState(BaseModel):
     assumptions: list[str] = []
     warnings: list[Warning] = []         # code + message + severity
     trace: list[TraceEvent] = []         # agent, started, ended, mode(llm|rules), summary
+    current_subtask: int = 0             # LangGraph loop cursor for multi-part questions
+    response: Response | None = None     # set by `finalize`
 ```
+
+This is the LangGraph state schema. Nodes return partial updates, and list fields use `Annotated[list[...], operator.add]` reducers so the trace stays append-only.
 
 **Reproducibility.** Every `ToolCall` stores the exact SQL text and bound params. `chemrag replay <request_id>` re-executes the logged tool calls against the DB, with no LLM, and diffs the results. This is the "reproducible from the query plan alone" guarantee.
 
@@ -221,13 +278,13 @@ The router is a deterministic function of `(intent, resolved entities)`, not an 
 | **Meta / DQ** | Intent `data_quality` or `coverage`. Calls `dq_summary` or `dataset_coverage`. | "Which dates look wrong?", "What years does the data cover?" |
 | **No-tool** | Intent `out_of_scope`, health or medical advice, or injection. Returns a templated refusal or redirect. | "Is titanium dioxide safe for my baby?" |
 
-Even "retrieval-only" ends in a SQL fetch by ID. **All evidence rows therefore come from `fact_report`**, never from an embedding store.
+Even "retrieval-only" ends in a SQL fetch by ID. **All evidence rows therefore come from `fact_report` in DuckDB**, never from Qdrant. Qdrant only answers the question "which entity or product did the user mean?".
 
 ---
 
 ## 4. Agent specs
 
-Each agent is a plain class exposing `run(state) -> state`, with the same small surface across all agents. The LLM is used only where noted. Every LLM call uses **structured output (JSON schema derived from the Pydantic model)**, validates the response, and retries once on validation error before falling back to rules.
+Each agent is a LangGraph node: a plain function `node(state: TurnState) -> dict` that returns a partial state update, with the same small surface across all agents. Nodes are testable without the graph. The LLM is used only where noted. Every LLM call uses **Gemini structured output (`response_schema` = the Pydantic model)**, validates the response, and retries once on validation error before falling back to rules.
 
 ### 4.1 Planner / Orchestrator — *hybrid*
 
@@ -300,7 +357,7 @@ The extractor runs in three passes, merged with deduplication:
 
 Failure modes are a brand and a common word colliding ("Pure", "Bare", "Mineral"), and a company name that is also a brand. The extractor keeps every typed candidate and leaves the decision to the Resolver, which checks against the DB.
 
-### 4.3 Entity Resolver / Semantic Retrieval — *deterministic + local embeddings (no LLM)*
+### 4.3 Entity Resolver / Semantic Retrieval — *deterministic + gte-large/Qdrant (no LLM)*
 
 ```python
 class Candidate(BaseModel):
@@ -310,7 +367,7 @@ class Candidate(BaseModel):
     matched_alias: str
     score: float                 # fused 0..1
     lexical: float; semantic: float | None
-    method: Literal["exact","cas","alias","fuzzy","embedding","fts"]
+    method: Literal["exact","cas","alias","fuzzy","vector","fts"]
     extra: dict                  # e.g. {"company": ..., "n_products": ...} for disambiguation
 
 class Resolution(BaseModel):
@@ -379,20 +436,43 @@ If check 1, 2 or 3 fails, the templated details replace the LLM text and a `veri
 
 ## 5. Retrieval design
 
-**What is embedded.** Canonical entity strings and their aliases only:
+### 5.1 Embedding model: `thenlper/gte-large`
 
-| Entity set | Approx. strings |
+| Property | Value |
+|---|---|
+| Size | ~335M params, ~670 MB download (one-time, cached in `~/.cache/huggingface`) |
+| Output | 1024-dim vectors, L2-normalised, cosine similarity |
+| Max input | 512 tokens (our strings are 2–20 tokens) |
+| Prompting | No query/passage prefix needed |
+| Runtime | Runs locally via `sentence-transformers` on CPU, or GPU if present |
+
+- The model is wrapped in `chemrag/retrieval/embed.py` as `Embedder.encode(texts) -> np.ndarray`.
+- The model name comes from `CHEMRAG_EMBED_MODEL`, so it can be swapped without code changes.
+- Query embeddings for repeated mentions go through a small LRU cache.
+- At startup, model load takes about 3–5 s on CPU. Each query mention embeds in about 30–60 ms.
+
+### 5.2 Vector DB: Qdrant
+
+- **Mode.** By default, `QdrantClient(path="data/processed/qdrant")` runs Qdrant **embedded**. It needs no Docker or server and keeps "one command" true. If `QDRANT_URL` (and optionally `QDRANT_API_KEY`) is set, the same code talks to a Qdrant server. An optional `docker-compose.yml` is included for that.
+- **Collection `entities`** (~3.3k points), with one point per (canonical entity, alias):
+  - Payload: `{entity_type, canonical_id, display_name, alias, company_key?, n_products}`
+  - Payload index on `entity_type`, so the resolver searches with a `entity_type == "brand"` filter instead of across everything.
+
+| Entity set | Approx. points |
 |---|---|
 | Chemical names and curated synonyms | ~200 |
 | Companies | 606 |
 | Brands | ~2.4k |
 | Categories (13 primary + 89 sub) | ~100 |
 
-That is about **3.3k strings in total**. They are embedded once at build time with `sentence-transformers/all-MiniLM-L6-v2` (384-dim, CPU, about 10 s) and stored as `data/processed/embeddings.npz`. Search is brute-force numpy cosine. A vector DB is **over-engineering** at this size.
+- **Collection `products`** (~33.5k points), with one point per distinct normalised product name:
+  - Payload: `{product_name, cdph_ids[], brand_key, company_key, subcategory_keys[]}`
+  - Payload indexes on `brand_key` and `company_key`, so "the shampoo from Glover's" filters by brand inside the vector search.
+  - This collection is what makes the semantic retrieval agent do real work. It handles fuzzy and descriptive product references such as "that medicated shampoo" or "baby sunscreen lotion", which lexical search alone misses.
+- **Build.** `make build` embeds and upserts the points in batches of 256. A manifest stores the model name, the CSV SHA-256 and the point counts, so a rebuild is skipped when nothing has changed. Rough CPU time is ~1 min for `entities` and ~10–15 min for `products`. `make build FAST=1` skips `products`, and product retrieval then falls back to DuckDB FTS plus rapidfuzz.
+- **Fallback.** If the model or Qdrant is unavailable, retrieval runs lexical-only and the response includes an `vector_unavailable` info warning. Every answer can still be produced.
 
-**Product names (33.7k) are *not* embedded by default.** Product-name questions are lexical by nature (names, shades), and DuckDB's `fts` extension (BM25) plus rapidfuzz re-ranking covers them. Embedding them would also work (about 1 minute on CPU) and is a flag (`--embed-products`) if evals show lexical misses.
-
-**114k rows are not embedded.** Rows are structured records, not prose. Every row-level question is answered exactly by SQL, and embedding rows would bring TiO2-dominated, near-duplicate vectors and imprecise grounding.
+**114k rows are still not embedded.** Rows are structured records, not prose. Every row-level question is answered exactly by SQL. Embedding rows would produce TiO2-dominated, near-duplicate vectors and imprecise grounding. Qdrant stores **names**, and DuckDB stores **facts**.
 
 **Resolution pipeline per mention.** Each stage short-circuits when it succeeds:
 
@@ -400,9 +480,11 @@ That is about **3.3k strings in total**. They are embedded once at build time wi
 2. **Exact or alias path.** Look up the normalised text in `chemical_alias` and the company and brand alias maps. A hit scores 1.0.
 3. **Fuzzy and semantic fusion.**
    - `lexical = max(rapidfuzz.WRatio, token_set_ratio)/100` against all aliases of the expected type.
-   - `semantic` = cosine(query embedding, alias embedding).
+   - `semantic` = cosine score from a Qdrant search (gte-large) on the `entities` collection, filtered by `entity_type`, top 10.
+   - Note: gte-large cosine scores are compressed, with unrelated strings often scoring ~0.7. Raw scores are therefore min-max rescaled using a calibration range measured at build time (median score for random pairs → 0, exact match → 1) before fusion.
    - `score = 0.65·lexical + 0.35·semantic`. Lexical dominates because misspellings are the common case.
-   - If the embedding model is unavailable, `score = lexical`, and the trace notes it.
+   - Candidates are the union of the rapidfuzz top 10 and the Qdrant top 10.
+   - If the embedding model or Qdrant is unavailable, `score = lexical`, and the trace notes it.
 4. **Type uncertainty.** If the extractor's type confidence is below 0.7, search all entity types and let the best score pick the type.
 
 **Thresholds** are starting values, to be tuned on the eval set and kept in `config/settings.py`:
@@ -539,22 +621,41 @@ The CLI flags are `--json` (raw contract), `--trace` (full TurnState), `--no-llm
 
 ## 9. Framework choice
 
-| | Plain Python pipeline | LangGraph |
-|---|---|---|
-| Readability for a reviewer | One file (`orchestrator.py`, ~150 lines) with explicit `if/else` routing | Graph DSL, state reducers, and framework concepts the reviewer must know |
-| Traceability | `TurnState.trace` is ours, serialises cleanly, and supports replay | Good (checkpoints, LangSmith), but it adds a dependency and is tied to its tooling |
-| Control flow needs | Mostly linear, with 2 branches (clarify/refuse) and 1 loop (verifier fallback) | Its strengths are cycles, human-in-the-loop interrupts, and parallel branches, which we barely need |
-| Graceful no-LLM mode | Trivial: each agent has `mode="rules"` | Possible, but more ceremony |
-| Dependencies | pydantic, duckdb, rapidfuzz, sentence-transformers, typer, rich | All of those plus langgraph and langchain-core |
+**Decision: LangGraph** (chosen at review). Here is why it fits, and how I keep it readable for an interviewer:
 
-**Recommendation: plain Python.** Each "agent" is a class with a typed `run(state)`, and the orchestrator is a readable state machine. The README will include a short note on how this maps onto LangGraph nodes if the team prefers it: each agent becomes a node, and the routing table becomes conditional edges.
+| Concern | How it is handled |
+|---|---|
+| Readability | The whole graph is defined in one file, `chemrag/graph.py` (~80 lines, shown in §3.0). Nodes are plain functions in `agents/`, and router functions are small and pure. |
+| Traceability | Every node appends a `TraceEvent`. The `query_plan` in the output is built from the trace, and the compiled graph is exported as Mermaid. LangSmith is optional. |
+| Control flow | Conditional edges cover clarify/refuse/hybrid routing, the multi-subtask loop and the verifier fallback. `interrupt()` plus a checkpointer gives real human-in-the-loop clarification, which is LangGraph's real advantage over a hand-rolled loop. |
+| No-LLM mode | Every LLM-using node checks `llm.available` and switches to rules. The graph topology does not change. |
+| Determinism | No LangChain agents or tool-calling loops. The LLM never chooses which node runs next. |
 
-**LLM interface.** `chemrag/llm/base.py` defines `class LLMClient(Protocol): def structured(self, system: str, user: str, schema: type[BaseModel]) -> BaseModel`. There are three implementations:
-- `AnthropicClient`, the default, using tool-use/JSON-schema structured output;
-- `OpenAIClient`, optional, about 40 lines;
-- `NullClient`, which raises `LLMUnavailable` so that agents fall back to rules.
+**What stays out of LangGraph:**
+- LangChain retrievers and vector-store wrappers: Qdrant is called directly via `qdrant-client`.
+- LangChain chat-model wrappers: Gemini is called directly via `google-genai`.
+- Prebuilt ReAct agents.
 
-Configuration comes from env vars: `CHEMRAG_LLM_PROVIDER=anthropic|openai|none`, `CHEMRAG_LLM_MODEL`, `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`, `CHEMRAG_LLM_TIMEOUT_S=20`, `CHEMRAG_DB_PATH`, and `CHEMRAG_EMBED_MODEL`. Missing keys automatically mean `none`, with an `llm_unavailable` info warning.
+This keeps the dependency set to `langgraph` (which brings in `langchain-core`) and avoids hidden prompt templates.
+
+**LLM interface.** `chemrag/llm/base.py` defines `class LLMClient(Protocol): def structured(self, system: str, user: str, schema: type[BaseModel]) -> BaseModel`. There are two implementations:
+- **`GeminiClient`**, the default. It uses `google-genai` with `client.models.generate_content(model=..., contents=..., config=GenerateContentConfig(system_instruction=..., response_mime_type="application/json", response_schema=<PydanticModel>, temperature=0))`. The result is re-validated with Pydantic, retried once on validation error, and given a 20 s timeout plus retry and backoff on 429/5xx.
+- **`NullClient`**, which raises `LLMUnavailable` so that nodes fall back to rules.
+
+The protocol is 1 method, so adding an OpenAI or Anthropic adapter later is ~40 lines. I won't build those now.
+
+**Configuration (env vars, with `.env.example` provided):**
+
+| Variable | Default / meaning |
+|---|---|
+| `GEMINI_API_KEY` | Also accepts `GOOGLE_API_KEY`. If neither is set, `CHEMRAG_LLM_PROVIDER` is treated as `none` and an `llm_unavailable` warning is added. |
+| `CHEMRAG_LLM_PROVIDER` | `gemini` or `none`, default `gemini` |
+| `CHEMRAG_LLM_MODEL` | Default `gemini-2.5-flash` (see Q2) |
+| `CHEMRAG_LLM_TIMEOUT_S` | 20 |
+| `CHEMRAG_EMBED_MODEL` | `thenlper/gte-large` |
+| `QDRANT_URL`, `QDRANT_API_KEY` | Unset means embedded mode at `data/processed/qdrant` |
+| `CHEMRAG_DB_PATH` | Path to the DuckDB file |
+| `LANGSMITH_API_KEY` | Optional |
 
 ---
 
@@ -639,23 +740,24 @@ The eval runs in **both** `--no-llm` and LLM mode and reports them side by side.
 
 ```
 RAG_calense/
-├── PLAN.md  README.md  Makefile  pyproject.toml  .env.example
+├── PLAN.md  README.md  Makefile  pyproject.toml  .env.example  docker-compose.yml (optional Qdrant server)
 ├── data/
 │   ├── raw/interviewtestdataset.csv          # (see open question Q1)
-│   └── processed/                            # gitignored: cscp.duckdb, embeddings.npz
+│   └── processed/                            # gitignored: cscp.duckdb, qdrant/ (embedded store), manifest.json
 ├── config/
 │   ├── chemical_groups.yaml                  # curated synonym families (reviewed by hand)
 │   └── settings.py                           # thresholds, limits, env parsing
 ├── chemrag/
 │   ├── cli.py                                # typer: build, ask, replay, eval, serve
 │   ├── api.py                                # FastAPI POST /ask (thin, optional)
-│   ├── orchestrator.py                       # pipeline + routing table
+│   ├── graph.py                              # LangGraph StateGraph: nodes, conditional edges, compile()
+│   ├── routing.py                            # pure router functions (unit-tested)
 │   ├── state.py  schemas.py                  # TurnState + all Pydantic contracts
 │   ├── agents/  planner.py extractor.py resolver.py query_agent.py synthesizer.py verifier.py
 │   ├── etl/     build_db.py  cas.py  normalize.py  dq.py
-│   ├── retrieval/ index.py  fuzzy.py  embed.py
+│   ├── retrieval/ embed.py (gte-large)  vector_store.py (Qdrant)  build_index.py  fuzzy.py
 │   ├── query/   filters.py  tools.py  sql/*.sql
-│   ├── llm/     base.py anthropic_client.py openai_client.py null_client.py prompts/*.md
+│   ├── llm/     base.py gemini_client.py null_client.py prompts/*.md
 │   └── render/  cli_render.py  templates/*.j2
 ├── evals/  golden.yaml  ground_truth.py  run_eval.py  report.md
 ├── tests/  fixtures/mini.csv  test_cas.py test_etl.py test_resolver.py test_filters.py test_tools.py test_verifier.py test_contract.py
@@ -664,18 +766,16 @@ RAG_calense/
 ```
 
 **Dependencies:**
-- **Core:** python ≥ 3.11, `pydantic>=2`, `duckdb`, `pandas` (ETL and evals), `rapidfuzz`, `numpy`, `typer`, `rich`, `jinja2`, `pyyaml`, `python-dotenv`.
+- **Core:** python ≥ 3.11, `pydantic>=2`, `duckdb`, `pandas` (ETL and evals), `rapidfuzz`, `numpy`, `typer`, `rich`, `jinja2`, `pyyaml`, `python-dotenv`, **`langgraph`**, **`google-genai`**, **`qdrant-client`**, **`sentence-transformers`** (brings in torch; a CPU wheel is fine).
 - **Optional extras:**
-  - `[embed]` adds `sentence-transformers`, which pulls in torch, so it is optional to keep install light.
-  - `[llm]` adds `anthropic` and optionally `openai`.
   - `[api]` adds `fastapi` and `uvicorn`.
   - `[dev]` adds `pytest`, `ruff`, and `mypy`.
 
 **Commands (Makefile):**
 
 ```
-make setup        # venv + pip install -e ".[embed,llm,api,dev]"
-make build        # ETL → DuckDB + dq_issues + embeddings (idempotent, checks CSV sha)
+make setup        # venv + pip install -e ".[api,dev]"
+make build        # ETL → DuckDB + dq_issues → gte-large embeddings → Qdrant upsert (idempotent; FAST=1 skips products)
 make ask Q="..."  # = chemrag ask "..."
 make demo         # runs 6 showcase questions
 make test  make eval  make lint  make serve
@@ -693,7 +793,7 @@ The one-command path is `make demo`, which runs setup and build if needed.
 7. Semantics and assumptions
 8. Ambiguity and safety policy
 9. Evaluation results (table)
-10. Design decisions and trade-offs (DuckDB, plain Python, no text-to-SQL, entity-only embeddings)
+10. Design decisions and trade-offs (DuckDB for facts, Qdrant for names, LangGraph with deterministic routers, Gemini for language only, no text-to-SQL)
 11. Known limitations
 12. What I'd do next
 
@@ -705,17 +805,16 @@ The one-command path is `make demo`, which runs setup and build if needed.
 |---|---|---|---|
 | M0 | Scaffold | pyproject, Makefile, settings, schemas skeleton, CI-less lint/test setup | 1 h |
 | M1 | Data foundation | ETL → DuckDB, CAS normaliser and tests, canonical dims, `chemical_groups.yaml` curation, dq_issues, dataset_meta, ETL invariant tests | 4–5 h |
-| M2 | **Vertical slice** | "Which products contain CAS 75-07-0?" end-to-end through all six agents in **no-LLM mode**: rules planner, regex extractor, CAS resolver, `find_products`, template synthesizer, verifier, Rich and JSON output, trace file and `replay` | 4 h |
-| M3 | LLM integration | `LLMClient` + Anthropic implementation, structured planner and extractor, narrative synthesizer with `[F]` refs, verifier fallback path | 3 h |
-| M4 | Breadth | Remaining tools (chemicals_for, trend, compare, detail, coverage, dq), fuzzy + embedding resolver, product FTS, multi-part decomposition, clarification flow, diagnostic relaxation | 5–6 h |
+| M2 | **Vertical slice** | "Which products contain CAS 75-07-0?" end-to-end through the **LangGraph** graph (all nodes wired, simple routers) in **no-LLM mode**: rules planner, regex extractor, CAS resolver, `find_products`, template synthesizer, verifier, Rich and JSON output, trace file and `replay` | 4–5 h |
+| M3 | LLM + vectors | `LLMClient` + **Gemini** implementation; **gte-large embedding + Qdrant index build** (entities, then products); structured planner and extractor, narrative synthesizer with `[F]` refs, verifier fallback path | 3 h |
+| M4 | Breadth | Remaining tools (chemicals_for, trend, compare, detail, coverage, dq), fuzzy + Qdrant fused resolver with score calibration, product vector retrieval + FTS fallback, multi-part decomposition loop, clarification via `interrupt()`, diagnostic relaxation | 5–6 h |
 | M5 | Evals | ground_truth.py, golden.yaml (≥30), run_eval with metrics in both modes, threshold tuning | 3–4 h |
 | M6 | Safety & polish | Injection heuristics, medical-advice refusal, TiO2-dominance handling, FastAPI wrapper, README with real eval numbers, demo script | 3 h |
-| | **Total** | | **~23–26 h** |
+| | **Total** | | **~25–28 h** |
 
 Things I'd flag as **over-engineering** and skip unless asked:
-- a vector DB (Chroma or FAISS);
 - an LLM-as-judge verifier;
-- LangGraph / LangSmith;
+- LangSmith as a requirement (it stays optional), LangChain agents/wrappers;
 - a web UI;
 - embedding all 114k rows;
 - async or streaming;
@@ -728,14 +827,17 @@ Things I'd flag as **over-engineering** and skip unless asked:
 **Open questions.** Each has my default in parentheses, so you can just reply "defaults OK".
 
 1. **Commit the 30 MB CSV to the public repo?** The data is public (data.ca.gov). Committing it makes `make demo` truly one-command. *(Default: commit it under `data/raw/`; it is well under GitHub's 100 MB limit.)*
-2. **LLM provider and model.** *(Default: Anthropic, with a current Claude Sonnet-class model set via `CHEMRAG_LLM_MODEL`; OpenAI adapter included; `none` always works.)* Do you have a key available for running the LLM-mode evals, or should the README numbers be no-LLM only?
+2. ~~LLM provider~~ **Decided: Gemini.** Remaining question: which model does your key have access to? *(Default: `gemini-2.5-flash` for speed and cost, configurable via `CHEMRAG_LLM_MODEL`; any current Gemini model with JSON-schema output works.)* The README eval numbers will be reported in both Gemini mode and no-LLM mode.
 3. **Service form.** *(Default: CLI first; a thin FastAPI `POST /ask` in M6.)* Is CLI-only acceptable?
 4. **Clarification behaviour.** When an entity is ambiguous, should the default be to *ask* (return `clarification`) or to *proceed with the top match plus a warning*? *(Default: ask in interactive CLI; proceed-with-warning in `--json`/API mode via `--assume-best`.)*
 5. **Should "contains" include removed chemicals?** *(Default: yes, include them and split the counts into current vs removed.)*
 6. **Should "reported in year X" mean InitialDateReported?** *(Default: yes, with the alternative mentioned in assumptions.)*
 7. **Chemical synonym grouping.** Should a name query like "retinol" expand to the whole retinoid family (Retinol, Retinyl palmitate/acetate, Vitamin A…)? *(Default: expand to the curated group and show a per-member breakdown. An exact CAS query stays exact.)* Grouping is a judgment call. I'll keep the YAML small and documented, and I won't make toxicological claims.
-8. **Embeddings.** `sentence-transformers` needs a one-time model download (~90 MB) and torch. *(Default: optional extra; the system works lexical-only if it is absent.)* Is that acceptable, or do you want embeddings mandatory to show the "vector" agent clearly?
-9. **Time budget.** The plan is ~24 h. If you want ~12 h, I'd cut: FastAPI, product FTS (use rapidfuzz only), compare intent depth, the OpenAI adapter, and the eval set down to 25 items.
+8. ~~Embeddings / vector DB~~ **Decided: `thenlper/gte-large` + Qdrant.** Remaining questions:
+   - Is embedded-mode Qdrant OK as the default, with a Docker server optional via `QDRANT_URL`?
+   - Is the ~670 MB model download and ~10–15 min product-embedding build on CPU acceptable?
+   *(Default: yes to both; `FAST=1` skips product embeddings.)*
+9. **Time budget.** The plan is ~26 h. If you want ~14 h, I'd cut: FastAPI, the product vector collection (entities only), compare-intent depth, and the eval set down to 25 items.
 
 **Risks:**
 - **Synonym curation correctness.** Wrongly grouping chemicals would produce wrong counts. *Mitigation:* groups are based on shared CAS and explicit Prop-65 naming in the data. Each group is listed in the README, and every answer shows a per-member breakdown.
@@ -746,4 +848,6 @@ Things I'd flag as **over-engineering** and skip unless asked:
 - **Product-name ambiguity** (1,793 shared names). *Mitigation:* the candidate list in the clarification.
 - **LLM variability** in extraction. *Mitigation:* deterministic passes run first; the LLM only adds, and its output is validated against the DB.
 - **`row_id` stability** depends on the exact CSV file. *Mitigation:* SHA-256 check at startup.
+- **gte-large score compression** (unrelated pairs often score ≈0.7–0.8) could cause false matches. *Mitigation:* calibrated rescaling, lexical-weighted fusion, the ambiguity margin, and resolver unit tests with hard negatives such as "Talc" vs "Tar".
+- **Gemini free-tier rate limits (429)** during evals. *Mitigation:* retry with backoff, an on-disk response cache keyed by (model, prompt hash) for eval runs, and no-LLM mode as a baseline.
 - **Evaluation bias.** I write both the system and the ground truth. *Mitigation:* ground truth uses raw pandas over the raw CSV, with no shared code.
