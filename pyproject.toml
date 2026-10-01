@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chemrag"
+version = "0.1.0"
+description = "Multi-agent orchestrator (LangGraph) for grounded Q&A over the California Safe Cosmetics chemical disclosure dataset"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.6",
+  "duckdb>=1.0",
+  "pandas>=2.1",
+  "numpy>=1.26",
+  "rapidfuzz>=3.6",
+  "typer>=0.12",
+  "rich>=13",
+  "jinja2>=3.1",
+  "pyyaml>=6",
+  "python-dotenv>=1.0",
+  "langgraph>=0.2",
+  "google-genai>=1.0",
+  "qdrant-client>=1.9",
+  "sentence-transformers>=3.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+chemrag = "chemrag.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["chemrag*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008", "B905", "UP042"]

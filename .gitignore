@@ -6,3 +6,6 @@ data/processed/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+runs/
+evals/results/
+*.egg-info/

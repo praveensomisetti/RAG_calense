@@ -1,0 +1,134 @@
+# Curated chemical synonym groups.
+#
+# A *group* = reported names that denote the same substance (or the same Prop-65 listing of it).
+# Queries by name resolve to the whole group and answers show a per-name breakdown.
+# A *family* links related-but-distinct groups (e.g. retinol vs retinyl palmitate). Families are only
+# used to (a) add an informational "related entries" note and (b) resolve explicit family terms
+# like "retinoids". They never silently widen a query.
+#
+# Every chemical name in the data that is not listed below becomes its own single-member group.
+# `synonyms` are extra lay/abbreviated names (matching only). Names must match the CSV exactly.
+
+families:
+  vitamin_a: "Vitamin A / retinoids"
+  formaldehyde: "Formaldehyde and releasers"
+  talc: "Talc"
+  silica: "Crystalline silica"
+  carbon_black: "Carbon black"
+  cocamides: "Coconut fatty-acid amides (cocamides)"
+
+family_synonyms:
+  vitamin_a: ["retinoids", "retinoid", "vitamin a family", "vitamin a compounds"]
+  cocamides: ["cocamides"]
+
+groups:
+  - name: Titanium dioxide
+    members: ["Titanium dioxide", "Titanium dioxide (airborne, unbound particles of respirable size)"]
+    synonyms: ["TiO2", "titania", "titanium white", "CI 77891"]
+
+  - name: Carbon black
+    family: carbon_black
+    members: ["Carbon black", "Carbon black (airborne, unbound particles of respirable size)"]
+    synonyms: ["CI 77266"]
+  - name: Carbon-black extracts
+    family: carbon_black
+    members: ["Carbon-black extracts"]
+
+  - name: Retinol (Vitamin A)
+    family: vitamin_a
+    members: ["Retinol", "Vitamin A"]
+  - name: Retinyl palmitate
+    family: vitamin_a
+    members: ["Retinyl palmitate", "Vitamin A palmitate", "Retinol palmitate"]
+  - name: Retinyl acetate
+    family: vitamin_a
+    members: ["Retinyl acetate", "Acetic acid, retinyl ester"]
+    synonyms: ["vitamin a acetate"]
+  - name: "Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily)"
+    family: vitamin_a
+    members: ["Retinol/retinyl esters, when in daily dosages in excess of 10,000 IU, or 3,000 retinol equivalents."]
+    synonyms: ["retinol/retinyl esters", "retinyl esters"]
+  - name: All-trans retinoic acid
+    family: vitamin_a
+    members: ["All-trans retinoic acid"]
+    synonyms: ["tretinoin", "retinoic acid"]
+
+  - name: Coal tar
+    members: ["Coal Tar", "Coal tar extract", "Coal tar solution", "Coal tars", "Distillates (coal tar)"]
+
+  - name: Cocamide DEA
+    family: cocamides
+    members: ["Cocamide diethanolamine", "Cocamide DEA", "Cocamide diethanolamine (DEA)",
+              "Diethanolamides of the fatty acids of coconut oil", "Cocamide"]
+    synonyms: ["coconut diethanolamide", "coconut oil diethanolamine condensate"]
+  - name: Cocamide MEA
+    family: cocamides
+    members: ["Cocamide MEA"]
+    synonyms: ["cocamide monoethanolamine"]
+  - name: Lauramide DEA
+    members: ["Lauramide DEA", "Lauramide diethanolamine"]
+
+  - name: Coffee
+    members: ["Coffee", "Coffee extract", "Coffee bean extract", "Extract of coffee bean", "Coffea arabica extract"]
+
+  - name: Talc
+    family: talc
+    members: ["Talc", "Cosmetic talc", "Talc (powder)", "Hydrous magnesium silicate"]
+  - name: Talc containing asbestiform fibers
+    family: talc
+    members: ["Talc containing asbestiform fibers"]
+
+  - name: Formaldehyde
+    family: formaldehyde
+    members: ["Formaldehyde", "Formaldehyde (gas)", "Formaldehyde solution"]
+    synonyms: ["formalin", "methanal"]
+  - name: Methylene glycol
+    family: formaldehyde
+    members: ["Methylene glycol"]
+
+  - name: Aspirin
+    members: ["Aspirin", "Acetylsalicylic acid"]
+
+  - name: Aloe vera, whole leaf extract
+    members: ["Aloe vera, whole leaf extract", "Aloe vera, non-decolorized whole leaf extract"]
+    synonyms: ["aloe vera", "aloe"]
+
+  - name: Arsenic (inorganic)
+    members: ["Arsenic (inorganic arsenic compounds)", "Arsenic (inorganic oxides)"]
+    synonyms: ["arsenic"]
+
+  - name: Silica, crystalline (respirable)
+    family: silica
+    members: ["Silica, crystalline (airborne particles of respirable size)"]
+    synonyms: ["crystalline silica", "silica"]
+  - name: Quartz
+    family: silica
+    members: ["Quartz"]
+
+  - name: Ethanol in alcoholic beverages
+    members: ["Ethanol in alcoholic beverages"]
+    synonyms: ["ethanol", "alcohol"]
+
+# Synonyms for chemicals that stay single-member groups (keyed by exact CSV name).
+singleton_synonyms:
+  "Bisphenol A (BPA)": ["BPA", "bisphenol a"]
+  "Di-n-butyl phthalate (DBP)": ["DBP", "dibutyl phthalate"]
+  "Dichloromethane (Methylene chloride)": ["methylene chloride", "dichloromethane", "DCM"]
+  "Butylated hydroxyanisole": ["BHA"]
+  "Benzophenone-3": ["oxybenzone", "BP-3"]
+  "Benzophenone-4": ["sulisobenzone", "BP-4"]
+  "Triethanolamine": ["TEA"]
+  "Diethanolamine": ["DEA"]
+  "N-Methylpyrrolidone": ["NMP", "N-methyl-2-pyrrolidone"]
+  "1,4-Dioxane": ["dioxane", "1 4 dioxane"]
+  "beta-Myrcene": ["myrcene"]
+  "Mineral oils, untreated and mildly treated": ["mineral oil", "mineral oils"]
+  "Mercury and mercury compounds": ["mercury"]
+  "Cadmium and cadmium compounds": ["cadmium"]
+  "Chromium (hexavalent compounds)": ["hexavalent chromium", "chromium vi", "chromium"]
+  "Nickel (Metallic)": ["nickel"]
+  "Ginkgo biloba extract": ["ginkgo", "ginkgo biloba"]
+  "Genistein (purified)": ["genistein"]
+  "o-Phenylenediamine and its salts": ["o-phenylenediamine", "OPD"]
+  "Quinoline and its strong acid salts": ["quinoline"]
+  "Trade Secret": ["trade secret", "undisclosed chemical", "confidential chemical"]
