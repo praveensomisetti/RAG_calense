@@ -11,6 +11,14 @@
 > - **Orchestration:** **LangGraph**
 >
 > Sections 0, 3, 4.3, 5, 9, 11, 12 and 13 are updated to match.
+>
+> **Revision 3 (environment constraints from review):**
+> - The target machine is a **CPU-only laptop with 8 GB RAM**.
+> - **No servers of any kind.** There is no Qdrant server, no Docker and no FastAPI. The system is a CLI only.
+> - The LLM is **Gemini 3.8 Flash**.
+> - **The 30 MB CSV is committed** under `data/raw/`.
+>
+> New §5.3 sets the memory budget, and §§5.2, 9, 11, 12 and 13 are updated.
 
 ---
 
@@ -25,7 +33,8 @@
 - **Where the LLM is used:** the LLM is **Gemini**, called via the `google-genai` SDK with JSON-schema structured output. It appears only where language understanding is needed: intent and decomposition, free-text entity extraction, and narrative phrasing. Everything that produces a *number* or an *ID* is deterministic code. If no LLM key is set, rule-based fallbacks run every stage end-to-end.
 - **Entity resolution:** curated canonical tables for chemicals, companies, brands and categories, plus a **CAS normaliser with check-digit validation**, plus **rapidfuzz** (lexical) and **`thenlper/gte-large` embeddings stored in Qdrant** (semantic).
   - Qdrant holds entity names (~3.3k) and product names (~33.7k), never the 114k rows.
-  - Qdrant runs in embedded local mode by default, so no server is needed. Setting `QDRANT_URL` points it at a server instead.
+  - Qdrant runs **embedded only**: `QdrantClient(path=...)`, inside the Python process, with no server or Docker.
+  - Everything is sized to fit a **CPU-only 8 GB laptop** (see §5.3).
 - **Querying:** a fixed library of **parameterised query tools** compiled from a typed `Filters` object. The LLM never writes SQL. The executed SQL and its bound params are recorded in the query plan.
 - **Answer synthesis:** `answer_short` is **templated from query results**. `answer_details` may be LLM-written, but a **deterministic verifier** checks every number and entity against the fact sheet. If the check fails, the system falls back to the templated text and attaches a warning.
 
@@ -177,7 +186,7 @@ Every box below is a **LangGraph node**. Dashed labels are **conditional edges**
 
 ```mermaid
 flowchart TD
-    U[User question<br/>CLI / HTTP] --> G0[Input guard<br/>length, injection heuristics, scope pre-check]
+    U[User question<br/>CLI] --> G0[Input guard<br/>length, injection heuristics, scope pre-check]
     G0 --> P[Planner / Orchestrator<br/>intent + decomposition<br/>LLM w/ rule fallback]
     P -->|sub-tasks| X[Entity & Constraint Extractor<br/>regex + gazetteer + LLM]
     X --> R[Entity Resolver / Semantic Retrieval<br/>CAS normaliser, alias table,<br/>rapidfuzz + gte-large → Qdrant]
@@ -449,11 +458,15 @@ If check 1, 2 or 3 fails, the templated details replace the LLM text and a `veri
 - The model is wrapped in `chemrag/retrieval/embed.py` as `Embedder.encode(texts) -> np.ndarray`.
 - The model name comes from `CHEMRAG_EMBED_MODEL`, so it can be swapped without code changes.
 - Query embeddings for repeated mentions go through a small LRU cache.
-- At startup, model load takes about 3–5 s on CPU. Each query mention embeds in about 30–60 ms.
+- At startup, model load takes about 5–10 s on CPU. Each query mention embeds in about 50–150 ms.
+- **The model loads lazily.** Questions that resolve via CAS, exact match or alias never load gte-large, which saves ~1.5 GB of RAM and several seconds on most questions.
 
 ### 5.2 Vector DB: Qdrant
 
-- **Mode.** By default, `QdrantClient(path="data/processed/qdrant")` runs Qdrant **embedded**. It needs no Docker or server and keeps "one command" true. If `QDRANT_URL` (and optionally `QDRANT_API_KEY`) is set, the same code talks to a Qdrant server. An optional `docker-compose.yml` is included for that.
+- **Mode: embedded only.** `QdrantClient(path="data/processed/qdrant")` runs Qdrant inside the Python process and persists to local files.
+  - There is no server, no Docker and no network port.
+  - Local mode does brute-force search, which takes a few ms at ~37k points, so no HNSW tuning is needed.
+  - Only one process can open the local store at a time. The CLI holds a single client per run, and the build writes before any query process opens it.
 - **Collection `entities`** (~3.3k points), with one point per (canonical entity, alias):
   - Payload: `{entity_type, canonical_id, display_name, alias, company_key?, n_products}`
   - Payload index on `entity_type`, so the resolver searches with a `entity_type == "brand"` filter instead of across everything.
@@ -469,10 +482,38 @@ If check 1, 2 or 3 fails, the templated details replace the LLM text and a `veri
   - Payload: `{product_name, cdph_ids[], brand_key, company_key, subcategory_keys[]}`
   - Payload indexes on `brand_key` and `company_key`, so "the shampoo from Glover's" filters by brand inside the vector search.
   - This collection is what makes the semantic retrieval agent do real work. It handles fuzzy and descriptive product references such as "that medicated shampoo" or "baby sunscreen lotion", which lexical search alone misses.
-- **Build.** `make build` embeds and upserts the points in batches of 256. A manifest stores the model name, the CSV SHA-256 and the point counts, so a rebuild is skipped when nothing has changed. Rough CPU time is ~1 min for `entities` and ~10–15 min for `products`. `make build FAST=1` skips `products`, and product retrieval then falls back to DuckDB FTS plus rapidfuzz.
+- **Build.**
+  - `make build` embeds the strings in batches of 32 (configurable) and upserts each batch to Qdrant immediately, so vectors never pile up in RAM.
+  - A manifest stores the model name, embedding dimension, CSV SHA-256 and point counts, so a rebuild is skipped when nothing has changed.
+  - The `products` step is **resumable**: if it is interrupted, it continues from the last upserted batch.
+  - Estimated CPU time on a 4-core laptop is ~1–2 min for `entities` and ~15–25 min for `products`. I'll measure real numbers in M3 and put them in the README.
+  - `make build FAST=1` skips `products`, and product retrieval then falls back to DuckDB FTS plus rapidfuzz.
 - **Fallback.** If the model or Qdrant is unavailable, retrieval runs lexical-only and the response includes an `vector_unavailable` info warning. Every answer can still be produced.
 
 **114k rows are still not embedded.** Rows are structured records, not prose. Every row-level question is answered exactly by SQL. Embedding rows would produce TiO2-dominated, near-duplicate vectors and imprecise grounding. Qdrant stores **names**, and DuckDB stores **facts**.
+
+### 5.3 Resource budget: CPU-only, 8 GB RAM
+
+The OS, a browser and an editor already take about 3–4 GB, so the target is **< 2.5 GB peak for `ask`** and **< 3 GB peak for `build`**.
+
+| Component | Estimated RSS | How it is kept down |
+|---|---|---|
+| Python + pandas ETL (build only) | ~0.6–0.8 GB peak | Read the CSV with explicit dtypes and `usecols`. Write to DuckDB, then `del` the DataFrame. ETL runs as its **own subprocess step** so its memory is returned before the model loads. |
+| DuckDB | ≤ 1 GB | `SET memory_limit='1GB'; SET threads=2`. The DB file is ~20–40 MB. |
+| torch + gte-large (fp32) | ~1.4–1.8 GB | CPU-only torch wheel (installed via the PyTorch CPU index; it is much smaller than the CUDA build). `max_seq_length=64` because our strings are short. Inference runs under `torch.inference_mode()` with `torch.set_num_threads(min(4, cores))`. The model loads lazily at query time. |
+| Qdrant embedded | ~0.2–0.3 GB | ~37k × 1024 float32 ≈ 150 MB of vectors plus payloads. |
+| LangGraph + app | < 0.2 GB | `MemorySaver` holds one request's state. |
+
+**Fallbacks if memory is still tight:**
+1. `CHEMRAG_EMBED_MODEL=thenlper/gte-base` (768-dim, ~0.45 GB). The manifest records the dimension, so changing the model triggers a clean rebuild of the Qdrant collections.
+2. `FAST=1`, which skips the `products` collection.
+3. `--no-vectors`, which uses lexical-only resolution.
+
+The system degrades in that order and never fails outright.
+
+Things I'm **not** doing:
+- ONNX/int8 quantisation of gte-large. It would cut RAM roughly in half but adds export tooling. It's listed as a "next step" unless measurements in M3 show it's needed.
+- GPU support.
 
 **Resolution pipeline per mention.** Each stage short-circuits when it succeeds:
 
@@ -545,7 +586,7 @@ A "text-to-SQL escape hatch" is **intentionally excluded**. It would be the main
 
 | Situation | Behaviour |
 |---|---|
-| **7.1 Multiple matches** | (a) Same chemical group: union the members, add an assumption, and give a per-name breakdown. (b) Different entities, both above the threshold and within the margin: **ask a clarification**. The response type is `clarification` and includes up to 5 candidates with disambiguating info (company, product count). In non-interactive mode (`--assume-best` or the HTTP param) the system proceeds with the top candidate, adds a `ambiguous_entity` warning listing the alternatives, and lowers confidence. (c) Generic product names matching more than one product: list the candidates (top 10 by most recent report) instead of guessing. |
+| **7.1 Multiple matches** | (a) Same chemical group: union the members, add an assumption, and give a per-name breakdown. (b) Different entities, both above the threshold and within the margin: **ask a clarification**. The response type is `clarification` and includes up to 5 candidates with disambiguating info (company, product count). In non-interactive mode (`--assume-best`, implied by `--json`) the system proceeds with the top candidate, adds a `ambiguous_entity` warning listing the alternatives, and lowers confidence. (c) Generic product names matching more than one product: list the candidates (top 10 by most recent report) instead of guessing. |
 | **7.2 No match** | Return `not_found` with the top-3 suggestions. The query never runs with a dropped constraint silently. If the query runs but returns 0 rows, run **diagnostic relaxations**, dropping one constraint at a time (dates, then category, then status), and report which constraint emptied the result, e.g. "Brand Y has 14 products, none in SubCategory Z; Brand Y's products are in …". |
 | **7.3 Missing entities** | Example: "Which products contain it?" or "trend for the company". The answer cannot be grounded, so the response type is `clarification` with an example of a complete question. If only an optional constraint is missing (e.g. a trend with no entity), proceed on the whole dataset and record that as an assumption. |
 | **7.4 Out-of-range dates** | Compare against `dataset_meta` for the specific field. If the range does not intersect the coverage, **no query is needed**. The answer is templated, e.g. "No data: DiscontinuedDate in this dataset ranges from 2001-01-01 to 2020-06-12; nothing in 2024." The query plan still shows the coverage lookup. If the range partially overlaps, clip it and warn. Relative dates such as "last 3 years" are anchored to the dataset max date, not today (2026), and this is stated. |
@@ -650,10 +691,11 @@ The protocol is 1 method, so adding an OpenAI or Anthropic adapter later is ~40 
 |---|---|
 | `GEMINI_API_KEY` | Also accepts `GOOGLE_API_KEY`. If neither is set, `CHEMRAG_LLM_PROVIDER` is treated as `none` and an `llm_unavailable` warning is added. |
 | `CHEMRAG_LLM_PROVIDER` | `gemini` or `none`, default `gemini` |
-| `CHEMRAG_LLM_MODEL` | Default `gemini-2.5-flash` (see Q2) |
+| `CHEMRAG_LLM_MODEL` | Default **Gemini 3.8 Flash**. I'll confirm its exact API ID string against `client.models.list()` in M3; `chemrag doctor` prints the available models. |
 | `CHEMRAG_LLM_TIMEOUT_S` | 20 |
 | `CHEMRAG_EMBED_MODEL` | `thenlper/gte-large` |
-| `QDRANT_URL`, `QDRANT_API_KEY` | Unset means embedded mode at `data/processed/qdrant` |
+| `CHEMRAG_QDRANT_PATH` | Default `data/processed/qdrant` (embedded; no server option) |
+| `CHEMRAG_EMBED_BATCH`, `CHEMRAG_TORCH_THREADS` | 32 and min(4, cores), for memory and CPU tuning |
 | `CHEMRAG_DB_PATH` | Path to the DuckDB file |
 | `LANGSMITH_API_KEY` | Optional |
 
@@ -740,16 +782,15 @@ The eval runs in **both** `--no-llm` and LLM mode and reports them side by side.
 
 ```
 RAG_calense/
-├── PLAN.md  README.md  Makefile  pyproject.toml  .env.example  docker-compose.yml (optional Qdrant server)
+├── PLAN.md  README.md  Makefile  pyproject.toml  .env.example
 ├── data/
-│   ├── raw/interviewtestdataset.csv          # (see open question Q1)
+│   ├── raw/interviewtestdataset.csv          # committed (30 MB, public data.ca.gov source)
 │   └── processed/                            # gitignored: cscp.duckdb, qdrant/ (embedded store), manifest.json
 ├── config/
 │   ├── chemical_groups.yaml                  # curated synonym families (reviewed by hand)
 │   └── settings.py                           # thresholds, limits, env parsing
 ├── chemrag/
-│   ├── cli.py                                # typer: build, ask, replay, eval, serve
-│   ├── api.py                                # FastAPI POST /ask (thin, optional)
+│   ├── cli.py                                # typer: build, ask, replay, eval, doctor
 │   ├── graph.py                              # LangGraph StateGraph: nodes, conditional edges, compile()
 │   ├── routing.py                            # pure router functions (unit-tested)
 │   ├── state.py  schemas.py                  # TurnState + all Pydantic contracts
@@ -766,19 +807,19 @@ RAG_calense/
 ```
 
 **Dependencies:**
-- **Core:** python ≥ 3.11, `pydantic>=2`, `duckdb`, `pandas` (ETL and evals), `rapidfuzz`, `numpy`, `typer`, `rich`, `jinja2`, `pyyaml`, `python-dotenv`, **`langgraph`**, **`google-genai`**, **`qdrant-client`**, **`sentence-transformers`** (brings in torch; a CPU wheel is fine).
+- **Core:** python ≥ 3.11, `pydantic>=2`, `duckdb`, `pandas` (ETL and evals), `rapidfuzz`, `numpy`, `typer`, `rich`, `jinja2`, `pyyaml`, `python-dotenv`, **`langgraph`**, **`google-genai`**, **`qdrant-client`**, **`sentence-transformers`** (brings in torch; **the CPU-only wheel** is installed via `--extra-index-url https://download.pytorch.org/whl/cpu` in `make setup` to keep the download and memory small).
 - **Optional extras:**
-  - `[api]` adds `fastapi` and `uvicorn`.
   - `[dev]` adds `pytest`, `ruff`, and `mypy`.
 
 **Commands (Makefile):**
 
 ```
-make setup        # venv + pip install -e ".[api,dev]"
+make setup        # venv + CPU-only torch + pip install -e ".[dev]"
 make build        # ETL → DuckDB + dq_issues → gte-large embeddings → Qdrant upsert (idempotent; FAST=1 skips products)
 make ask Q="..."  # = chemrag ask "..."
 make demo         # runs 6 showcase questions
-make test  make eval  make lint  make serve
+make doctor       # checks RAM, model cache, Gemini key + model id, DB/Qdrant manifests
+make test  make eval  make lint
 ```
 
 The one-command path is `make demo`, which runs setup and build if needed.
@@ -809,7 +850,7 @@ The one-command path is `make demo`, which runs setup and build if needed.
 | M3 | LLM + vectors | `LLMClient` + **Gemini** implementation; **gte-large embedding + Qdrant index build** (entities, then products); structured planner and extractor, narrative synthesizer with `[F]` refs, verifier fallback path | 3 h |
 | M4 | Breadth | Remaining tools (chemicals_for, trend, compare, detail, coverage, dq), fuzzy + Qdrant fused resolver with score calibration, product vector retrieval + FTS fallback, multi-part decomposition loop, clarification via `interrupt()`, diagnostic relaxation | 5–6 h |
 | M5 | Evals | ground_truth.py, golden.yaml (≥30), run_eval with metrics in both modes, threshold tuning | 3–4 h |
-| M6 | Safety & polish | Injection heuristics, medical-advice refusal, TiO2-dominance handling, FastAPI wrapper, README with real eval numbers, demo script | 3 h |
+| M6 | Safety & polish | Injection heuristics, medical-advice refusal, TiO2-dominance handling, measured RAM/latency table, README with real eval numbers, demo script | 3 h |
 | | **Total** | | **~25–28 h** |
 
 Things I'd flag as **over-engineering** and skip unless asked:
@@ -818,7 +859,7 @@ Things I'd flag as **over-engineering** and skip unless asked:
 - a web UI;
 - embedding all 114k rows;
 - async or streaming;
-- Docker. Docker is cheap to add at the end if wanted.
+- Docker, FastAPI, or any server process. These are out of scope by decision.
 
 ---
 
@@ -826,18 +867,17 @@ Things I'd flag as **over-engineering** and skip unless asked:
 
 **Open questions.** Each has my default in parentheses, so you can just reply "defaults OK".
 
-1. **Commit the 30 MB CSV to the public repo?** The data is public (data.ca.gov). Committing it makes `make demo` truly one-command. *(Default: commit it under `data/raw/`; it is well under GitHub's 100 MB limit.)*
-2. ~~LLM provider~~ **Decided: Gemini.** Remaining question: which model does your key have access to? *(Default: `gemini-2.5-flash` for speed and cost, configurable via `CHEMRAG_LLM_MODEL`; any current Gemini model with JSON-schema output works.)* The README eval numbers will be reported in both Gemini mode and no-LLM mode.
-3. **Service form.** *(Default: CLI first; a thin FastAPI `POST /ask` in M6.)* Is CLI-only acceptable?
+1. ~~Commit the CSV?~~ **Decided: committed** at `data/raw/interviewtestdataset.csv`.
+2. ~~LLM provider/model~~ **Decided: Gemini 3.8 Flash**, configurable via `CHEMRAG_LLM_MODEL`. The README eval numbers will be reported in both Gemini mode and no-LLM mode.
+3. ~~Service form~~ **Decided: CLI only, with no servers.**
 4. **Clarification behaviour.** When an entity is ambiguous, should the default be to *ask* (return `clarification`) or to *proceed with the top match plus a warning*? *(Default: ask in interactive CLI; proceed-with-warning in `--json`/API mode via `--assume-best`.)*
 5. **Should "contains" include removed chemicals?** *(Default: yes, include them and split the counts into current vs removed.)*
 6. **Should "reported in year X" mean InitialDateReported?** *(Default: yes, with the alternative mentioned in assumptions.)*
 7. **Chemical synonym grouping.** Should a name query like "retinol" expand to the whole retinoid family (Retinol, Retinyl palmitate/acetate, Vitamin A…)? *(Default: expand to the curated group and show a per-member breakdown. An exact CAS query stays exact.)* Grouping is a judgment call. I'll keep the YAML small and documented, and I won't make toxicological claims.
-8. ~~Embeddings / vector DB~~ **Decided: `thenlper/gte-large` + Qdrant.** Remaining questions:
-   - Is embedded-mode Qdrant OK as the default, with a Docker server optional via `QDRANT_URL`?
-   - Is the ~670 MB model download and ~10–15 min product-embedding build on CPU acceptable?
-   *(Default: yes to both; `FAST=1` skips product embeddings.)*
-9. **Time budget.** The plan is ~26 h. If you want ~14 h, I'd cut: FastAPI, the product vector collection (entities only), compare-intent depth, and the eval set down to 25 items.
+8. ~~Embeddings / vector DB~~ **Decided: `thenlper/gte-large` + embedded Qdrant**, sized for 8 GB RAM on CPU (§5.3).
+9. **Time budget.** The plan is ~25 h now that FastAPI is dropped. If you want ~14 h, I'd cut: the product vector collection (entities only), compare-intent depth, and the eval set down to 25 items.
+
+**Still open:** Q4 (ask vs proceed on ambiguity), Q5 ("contains" includes removed chemicals), Q6 ("reported in year X" means InitialDateReported) and Q7 (expand chemical synonym groups). If I hear nothing, I'll build with the defaults shown.
 
 **Risks:**
 - **Synonym curation correctness.** Wrongly grouping chemicals would produce wrong counts. *Mitigation:* groups are based on shared CAS and explicit Prop-65 naming in the data. Each group is listed in the README, and every answer shows a per-member breakdown.
@@ -849,5 +889,6 @@ Things I'd flag as **over-engineering** and skip unless asked:
 - **LLM variability** in extraction. *Mitigation:* deterministic passes run first; the LLM only adds, and its output is validated against the DB.
 - **`row_id` stability** depends on the exact CSV file. *Mitigation:* SHA-256 check at startup.
 - **gte-large score compression** (unrelated pairs often score ≈0.7–0.8) could cause false matches. *Mitigation:* calibrated rescaling, lexical-weighted fusion, the ambiguity margin, and resolver unit tests with hard negatives such as "Talc" vs "Tar".
+- **8 GB RAM pressure** while a browser or IDE is also open. *Mitigation:* lazy model load, ETL in a separate step, DuckDB memory cap, a documented fallback to gte-base or no vectors, and the peak RSS of `ask` and `build` measured and reported in the README.
 - **Gemini free-tier rate limits (429)** during evals. *Mitigation:* retry with backoff, an on-disk response cache keyed by (model, prompt hash) for eval runs, and no-LLM mode as a baseline.
 - **Evaluation bias.** I write both the system and the ground truth. *Mitigation:* ground truth uses raw pandas over the raw CSV, with no shared code.
