@@ -17,7 +17,7 @@ import duckdb
 import numpy as np
 
 from chemrag.retrieval.embed import get_embedder
-from chemrag.retrieval.vector_store import ENTITIES, PRODUCTS, VectorStore
+from chemrag.retrieval.vector_store import ENTITIES, PRODUCTS, VectorStore, store_path
 
 
 def _read(db_path: Path, sql: str) -> list[dict[str, Any]]:
@@ -57,10 +57,10 @@ def _embed_upsert(store: VectorStore, name: str, embedder, texts: list[str], pay
 
 
 def build_vector_index(db_path: Path, qdrant_path: Path, manifest_path: Path, model_name: str,
-                       csv_sha256: str, fast: bool = False, batch: int = 32, threads: int = 4,
+                       csv_sha256: str, products: bool = False, batch: int = 32, threads: int = 4,
                        force: bool = False, log=print) -> dict[str, Any]:
     embedder = get_embedder(model_name, threads, batch)
-    store = VectorStore(qdrant_path)
+    store = VectorStore(qdrant_path, ENTITIES)
     old = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     same_basis = old.get("model") == model_name and old.get("csv_sha256") == csv_sha256 and not force
     manifest: dict[str, Any] = {"model": model_name, "dim": embedder.dim, "csv_sha256": csv_sha256,
@@ -88,10 +88,16 @@ def build_vector_index(db_path: Path, qdrant_path: Path, manifest_path: Path, mo
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps({**manifest, "products_complete": False}, indent=2))
 
-    if fast:
-        log("FAST build: skipping products collection (product lookup falls back to lexical search)")
+    if not products:
+        log("products collection not built (default on 8 GB machines; product names use lexical matching). "
+            "Use `chemrag build --products` to add it.")
         manifest["collections"].pop(PRODUCTS, None)
+        if store_path(qdrant_path, PRODUCTS).exists():
+            import shutil
+
+            shutil.rmtree(store_path(qdrant_path, PRODUCTS))
     else:
+        store = VectorStore(qdrant_path, PRODUCTS)
         prods = product_points(db_path)
         payloads = [{"product_name": p["product_name"], "product_norm": p["product_norm"],
                      "cdph_ids": [int(x) for x in p["cdph_ids"]],
@@ -110,6 +116,6 @@ def build_vector_index(db_path: Path, qdrant_path: Path, manifest_path: Path, mo
             _embed_upsert(store, PRODUCTS, embedder, [p["product_name"] for p in prods], payloads, batch, have, log)
         manifest["collections"][PRODUCTS] = len(prods)
 
-    manifest["products_complete"] = not fast
+    manifest["products_complete"] = products
     manifest_path.write_text(json.dumps(manifest, indent=2))
     return manifest

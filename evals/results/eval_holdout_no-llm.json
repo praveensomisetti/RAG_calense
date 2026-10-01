@@ -1,0 +1,395 @@
+{
+  "metrics": {
+    "cases": 14,
+    "passed": 14,
+    "response_type_accuracy": 1.0,
+    "intent_accuracy": null,
+    "entity_resolution_accuracy": 1.0,
+    "answer_correctness": 1.0,
+    "citation_precision": 1.0,
+    "warning_recall": 1.0,
+    "refusal_clarification_accuracy": 1.0,
+    "mode": "no-llm",
+    "vectors": "off",
+    "seconds_total": 1.5
+  },
+  "cases": [
+    {
+      "id": "h_list_acetaldehyde",
+      "question": "List the products that report acetaldehyde (CAS 75-07-0)",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Acetaldehyde"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true,
+        "n_discontinued": true
+      },
+      "values_ok": true,
+      "cited": 20,
+      "cited_ok": 20,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "30 products containing Acetaldehyde or Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
+      "confidence": "high",
+      "seconds": 0.07,
+      "pass": true
+    },
+    {
+      "id": "h_tio2_misspelled",
+      "question": "how many items have titanium dioxyde in them",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "lookup"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Titanium dioxide"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 25,
+      "cited_ok": 25,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
+      "confidence": "high",
+      "seconds": 0.1,
+      "pass": true
+    },
+    {
+      "id": "h_retinyl_or_vit_a",
+      "question": "Number of products containing retinyl palmitate or vitamin A palmitate",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "lookup"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Retinyl palmitate"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 25,
+      "cited_ok": 25,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "927 products containing Retinyl palmitate (37 of them discontinued), reported by 71 companies.",
+      "confidence": "high",
+      "seconds": 0.07,
+      "pass": true
+    },
+    {
+      "id": "h_loreal_ingredients",
+      "question": "Which ingredients does L'Oreal USA report?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "L'Oreal USA"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "chemicals": true,
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 2,
+      "cited_ok": 2,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "2 chemicals reported across 1,052 products from L'Oreal USA; most common: Titanium dioxide (1,052), Talc (1).",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "h_disc_2015_vit_a_palm",
+      "question": "Products discontinued during 2015 containing vitamin A palmitate",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Retinyl palmitate"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 2,
+      "cited_ok": 2,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "2 products containing Retinyl palmitate, discontinued in 2015, reported by 2 companies.",
+      "confidence": "medium",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "h_nail_yearly",
+      "question": "How has reporting of nail products changed year by year?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "trend"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Nail Products"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "trend": true
+      },
+      "values_ok": true,
+      "cited": 12,
+      "cited_ok": 12,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Products in Nail Products by year of InitialDateReported: peak in 2019 (1,610); 2009: 867, 2020: 180 (total 6,920 products).",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "h_silica_top5",
+      "question": "Which 5 companies report the most products with crystalline silica?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {
+        "top": true
+      },
+      "values_ok": true,
+      "cited": 10,
+      "cited_ok": 10,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Top companies by number of products containing Silica, crystalline (respirable): Nail Alliance - Entity (568), Oceana USA, Inc. (168), Hand & Nail Harmony, Inc (127).",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "h_talc_2030",
+      "question": "Anything discontinued in 2030 containing talc?",
+      "type_expected": "no_data",
+      "type_got": "no_data",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 0,
+      "cited_ok": 0,
+      "must_warn": [
+        "out_of_range_date"
+      ],
+      "warn_missing": [],
+      "answer_short": "No data in range. DiscontinuedDate in this dataset ranges from 2001-01-01 to 2020-06-12; there is no data for '2030'.",
+      "confidence": "medium",
+      "seconds": 0.02,
+      "pass": true
+    },
+    {
+      "id": "h_glovers_unquoted",
+      "question": "chemicals in Glovers Medicated Shampoo",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {
+        "chemicals": true
+      },
+      "values_ok": true,
+      "cited": 2,
+      "cited_ok": 2,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "2 chemicals reported across 1 product named 'Glovers Medicated Shampoo', of brand Glover's; most common: Coal tar (1), Estragole (1).",
+      "confidence": "medium",
+      "seconds": 0.07,
+      "pass": true
+    },
+    {
+      "id": "h_formaldehyde_danger",
+      "question": "Are cosmetics with formaldehyde dangerous?",
+      "type_expected": "refusal",
+      "type_got": "refusal",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "lookup"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 25,
+      "cited_ok": 25,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "I can't provide health or safety advice. This dataset records what companies reported to the California Safe Cosmetics Program; it does not assess safety, exposure or health risk. Factually: 108 products containing Formaldehyde (16 of them discontinued), reported by 20 companies.",
+      "confidence": "medium",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "h_dq_summary",
+      "question": "Give me a summary of data problems in this dataset",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "data_quality"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {
+        "dq_null_cas": true
+      },
+      "values_ok": true,
+      "cited": 8,
+      "cited_ok": 8,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Main data-quality issues: discontinued_before_initial (2,866), cas_from_casid (1,915), removed_before_created (192); plus 254 exact duplicate rows.",
+      "confidence": "high",
+      "seconds": 0.05,
+      "pass": true
+    },
+    {
+      "id": "h_joke",
+      "question": "Tell me a joke",
+      "type_expected": "refusal",
+      "type_got": "refusal",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "out_of_scope"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 0,
+      "cited_ok": 0,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "This assistant only answers questions about the California Safe Cosmetics Program chemical disclosure dataset.",
+      "confidence": "high",
+      "seconds": 0.01,
+      "pass": true
+    },
+    {
+      "id": "h_revlon_removed",
+      "question": "What chemicals did Revlon remove or reformulate?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [
+        "Revlon"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true,
+        "chemicals": true
+      },
+      "values_ok": true,
+      "cited": 2,
+      "cited_ok": 2,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "2 chemicals reported across 8 products of brand Revlon where the chemical was later removed; most common: Titanium dioxide (7), Carbon black (1).",
+      "confidence": "high",
+      "seconds": 0.08,
+      "pass": true
+    },
+    {
+      "id": "h_bad_cas",
+      "question": "Which products have CAS 13463-67-8?",
+      "type_expected": "no_data",
+      "type_got": "no_data",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 0,
+      "cited_ok": 0,
+      "must_warn": [
+        "entity_not_found"
+      ],
+      "warn_missing": [],
+      "answer_short": "No answer: '13463-67-8' is not a valid CAS number (check digit fails); did you mean 13463-67-7.",
+      "confidence": "low",
+      "seconds": 0.02,
+      "pass": true
+    }
+  ]
+}

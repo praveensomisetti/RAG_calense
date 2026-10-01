@@ -1,8 +1,7 @@
 # PLAN — Multi-Agent Orchestrator for Chemical Disclosure RAG
 
-> Status: **DRAFT for review**. No implementation code has been written yet. Only the exploration script
-> (`scripts/profile_data.py`) and its output (`docs/profiling_output.txt`) are committed.
-> Please review §13 (open questions) before I start building.
+> Status: **APPROVED and IMPLEMENTED** (milestones M0–M6). See the README for usage and evaluation results,
+> and §14 below for where the implementation deviates from this plan and why.
 >
 > **Revision 2 (stack decisions from review):**
 > - **Embeddings:** `thenlper/gte-large`
@@ -892,3 +891,25 @@ Things I'd flag as **over-engineering** and skip unless asked:
 - **8 GB RAM pressure** while a browser or IDE is also open. *Mitigation:* lazy model load, ETL in a separate step, DuckDB memory cap, a documented fallback to gte-base or no vectors, and the peak RSS of `ask` and `build` measured and reported in the README.
 - **Gemini free-tier rate limits (429)** during evals. *Mitigation:* retry with backoff, an on-disk response cache keyed by (model, prompt hash) for eval runs, and no-LLM mode as a baseline.
 - **Evaluation bias.** I write both the system and the ground truth. *Mitigation:* ground truth uses raw pandas over the raw CSV, with no shared code.
+
+
+---
+
+## 14. Implementation notes (deviations from the plan)
+
+| Plan | Implemented | Why |
+|---|---|---|
+| Products collection built by default, with `FAST=1` to skip it | Products collection is **opt-in** (`chemrag build --products`), and entities and products are **separate embedded Qdrant stores**. The products store opens lazily. | Measured: embedded Qdrant loads a whole store into RAM, so the 33k-point products store cost ~1 GB at 512-d, or ~2 GB+ at 1024-d. Typical `ask` now peaks at ~0.46 GB before the model loads. |
+| DuckDB `fts` (BM25) for product names | rapidfuzz over distinct product names, plus Qdrant vectors when the products store exists | The `fts` extension needs a network download at runtime, and rapidfuzz passes all product cases. |
+| Verifier → fallback as a separate graph edge | The verifier node swaps in the templated details itself | One edge fewer; same behaviour, still traced as `verifier_fallback`. |
+| Tool tests on a ~40-row fixture CSV | Tool and ETL tests run on the real DuckDB, with numbers verified independently (profiling script and pandas ground truth) | The real numbers are more valuable to an interviewer, and the build takes ~25 s. |
+| `product_detail` tool | Covered by `chemicals_for` / `find_products` with a `cdph_ids` filter | Avoids a duplicate template. |
+| Trade Secret rows excluded from all queries | Counted as products; excluded only from chemical listings, with a separate count | Excluding them everywhere under-counted products whose only reported chemical is a trade secret. |
+| — | Added a `chemical_family` alias level (e.g. "retinoids", "crystalline silica") and a non-blocking brand+product guess for unquoted product names | Found during evaluation. |
+| Golden set ≥ 25 | 35 golden cases plus a 14-case **held-out** paraphrase set, with its first untuned run kept as the honest generalisation number | Avoids reporting only in-sample accuracy. |
+
+Not verifiable in the build sandbox, because Hugging Face downloads were blocked and there was no Gemini key:
+- the real gte-large vectors;
+- live Gemini calls.
+
+Both code paths are implemented and exercised. Vectors were tested with the offline `hash-ngram` embedder through the same Qdrant code, and Gemini with a scripted fake client. `chemrag doctor` checks both on the target laptop.

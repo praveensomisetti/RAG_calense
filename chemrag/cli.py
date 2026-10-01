@@ -28,10 +28,11 @@ def _peak_mb() -> float:
 
 
 @app.command()
-def build(fast: bool = typer.Option(False, help="Skip embedding product names (faster, less RAM)."),
+def build(products: bool = typer.Option(False, "--products", help="Also embed ~33k product names (needs ~2 GB "
+                                                                    "more RAM at query time with gte-large)."),
           skip_index: bool = typer.Option(False, help="Only build DuckDB; no embeddings / Qdrant."),
           force: bool = typer.Option(False, help="Rebuild everything even if unchanged.")) -> None:
-    """ETL the CSV into DuckDB, then embed entity/product names into embedded Qdrant."""
+    """ETL the CSV into DuckDB, then embed entity (and optionally product) names into embedded Qdrant."""
     import subprocess
 
     s = get_settings()
@@ -65,7 +66,7 @@ def build(fast: bool = typer.Option(False, help="Skip embedding product names (f
     from chemrag.retrieval.embed import EmbeddingUnavailable
 
     try:
-        m = build_vector_index(s.db_path, s.qdrant_path, s.manifest_path, s.embed_model, sha, fast=fast,
+        m = build_vector_index(s.db_path, s.qdrant_path, s.manifest_path, s.embed_model, sha, products=products,
                                batch=s.embed_batch, threads=s.torch_threads, force=force, log=console.print)
         console.print(f"index ready: {m['collections']} (dim {m['dim']}, semantic floor {m['semantic_floor']:.3f})")
     except EmbeddingUnavailable as e:

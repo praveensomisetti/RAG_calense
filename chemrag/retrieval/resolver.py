@@ -90,7 +90,7 @@ class VectorIndex:
         try:
             self.embedder = get_embedder(self.settings.embed_model, self.settings.torch_threads,
                                          self.settings.embed_batch)
-            self.store = VectorStore(self.settings.qdrant_path)
+            self.store = VectorStore(self.settings.qdrant_path, ENTITIES)
         except EmbeddingUnavailable as e:
             self.reason = str(e)
             return False
@@ -98,7 +98,8 @@ class VectorIndex:
             self.reason = f"vector store unavailable: {e}"
             return False
         self.floor = float(manifest.get("semantic_floor", 0.0))
-        self.has_products = bool(manifest.get("products_complete")) and self.store.exists(PRODUCTS)
+        self.has_products = bool(manifest.get("products_complete"))
+        self._product_store: VectorStore | None = None  # opened lazily: it is the large one
         return True
 
     def calibrate(self, raw: float) -> float:
@@ -117,7 +118,10 @@ class VectorIndex:
             must["brand_keys"] = brand_keys
         if company_keys:
             must["company_keys"] = company_keys
-        return [(p, self.calibrate(s)) for p, s in self.store.search(PRODUCTS, vec, limit, must=must or None)]
+        if self._product_store is None:
+            self._product_store = VectorStore(self.settings.qdrant_path, PRODUCTS)
+        return [(p, self.calibrate(s)) for p, s in
+                self._product_store.search(PRODUCTS, vec, limit, must=must or None)]
 
 
 class EntityResolver:

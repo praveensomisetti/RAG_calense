@@ -1,5 +1,8 @@
 """Embedded Qdrant (no server): `QdrantClient(path=...)` persists to local files.
 
+Each collection lives in its own local store (`<qdrant_path>/<collection>`). Local mode loads a whole store
+into RAM when opened, so keeping them separate lets the small `entities` store open on its own and the large,
+optional `products` store open only when a question actually names a product (8 GB RAM budget).
 Local mode allows one client per storage path per process, so clients are cached here.
 """
 
@@ -28,9 +31,13 @@ def _client(path: str) -> QdrantClient:
     return client
 
 
+def store_path(root: Path, collection: str) -> Path:
+    return Path(root) / collection
+
+
 class VectorStore:
-    def __init__(self, path: Path):
-        self.path = Path(path)
+    def __init__(self, root: Path, collection: str):
+        self.path = store_path(root, collection)
         self.client = _client(str(self.path))
 
     def exists(self, name: str) -> bool:
