@@ -13,7 +13,7 @@
 | refusal_clarification_accuracy | 1.000 |
 | mode | no-llm |
 | vectors | off |
-| seconds_total | 1.200 |
+| seconds_total | 1.400 |
 
 | id | pass | type | values | cited ok | answer |
 |---|---|---|---|---|---|

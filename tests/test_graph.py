@@ -125,3 +125,45 @@ def test_saved_run_file(orch, settings):
     resp = orch.ask("What date range does the data cover?")
     data = json.loads((settings.runs_dir / f"{resp.request_id}.json").read_text())
     assert data["response"]["request_id"] == resp.request_id and data["tool_calls"]
+
+
+# ------------------------------------------------------------------ regression: real gpt-4o-mini behaviour (quick eval)
+class OverSplittingLLM(FakeLLM):
+    """Reproduces what gpt-4o-mini did: paraphrased names and split 'or'/'vs' questions apart."""
+
+    def __init__(self, subtasks):
+        super().__init__(["ok [F1]"])
+        self.subtasks = subtasks
+
+    def structured(self, system, user, schema):
+        if schema is LLMPlan:
+            return LLMPlan(scope="in_scope", subtasks=[LLMSubTask(text=t, intent=i) for t, i in self.subtasks])
+        if schema is LLMExtraction:
+            return LLMExtraction(mentions=[], date_field="none", discontinued="unspecified",
+                                 chemical_removed="unspecified")
+        return super().structured(system, user, schema)
+
+
+def test_llm_paraphrase_cannot_drop_exact_names(settings):
+    llm = OverSplittingLLM([("What chemicals are reported for Sally Hansen in the Nail Polish subcategory?", "list")])
+    resp, values = make(settings, llm).ask_full(
+        "What chemicals are reported for Sally Hansen in Nail Polish and Enamel?", save=False)
+    assert resp.response_type == "answer" and "Nail Polish and Enamel" in resp.answer_short
+    assert values["plan"].subtasks[0].text.endswith("Nail Polish and Enamel?")
+
+
+def test_llm_cannot_split_alternatives(settings):
+    llm = OverSplittingLLM([("Which products contain formaldehyde?", "list"),
+                            ("Which products contain CAS 75-07-0?", "list")])
+    resp, values = make(settings, llm).ask_full("Which products contain formaldehyde or CAS 75-07-0?", save=False)
+    assert len(values["plan"].subtasks) == 1 and resp.answer_short.startswith("131 products")
+
+
+def test_llm_cannot_split_comparisons(settings):
+    llm = OverSplittingLLM([("How many products with carbon black in Makeup Products?", "lookup"),
+                            ("How many products with carbon black in Nail Products?", "lookup")])
+    _, values = make(settings, llm).ask_full(
+        "Compare the number of products with carbon black in Makeup Products vs Nail Products", save=False)
+    plan = values["plan"]
+    assert len(plan.subtasks) == 1 and plan.subtasks[0].intent.value == "compare"
+    assert [r.totals["n_products"] for r in values["results"]] == [304, 443]

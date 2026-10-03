@@ -373,7 +373,7 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
   - **Splits multi-part questions** into up to four sub-questions.
   - Uses the LLM when available and keyword rules otherwise.
   - A deterministic medical-advice check runs even if the LLM missed it.
-- **Why:** the LLM classifies, but it doesn't choose which tools run. Routing stays deterministic.
+- **Why:** the LLM classifies, but it doesn't choose which tools run. Routing stays deterministic. The LLM does **not** decide sub-question boundaries or rewrite the user's words: in the first LLM-mode evaluation, gpt-4o-mini shortened exact names and split "X or Y" and "X vs Y" questions apart. A deterministic splitter now keeps the user's wording, and the LLM contributes scope, plus intent where the keyword rules are unsure.
 
 #### `agents/extractor.py`: the note-taker (brief role 2: Entity & Constraint Extraction)
 - **Does:** finds the details of each sub-question, in layers.

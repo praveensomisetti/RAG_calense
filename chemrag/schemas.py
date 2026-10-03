@@ -31,7 +31,7 @@ class SubTask(BaseModel):
 
 class Plan(BaseModel):
     subtasks: list[SubTask]
-    mode: Literal["llm", "rules"]
+    mode: Literal["llm", "rules", "llm+rules"]
     scope: Literal["in_scope", "medical_advice", "unrelated"] = "in_scope"
     note: str | None = None
 

@@ -77,6 +77,20 @@ def has_domain_signal(text: str, ctx: AgentContext) -> bool:
     return False
 
 
+def split_parts(text: str, ctx: AgentContext) -> tuple[list[str], str | None]:
+    """Deterministic sub-question boundaries. Parts keep the user's exact words (entity names intact)."""
+    parts = [p.strip(" ,") for p in SPLIT.split(text) if p and len(p.strip(" ,?.")) > 3] or [text]
+    note = None
+    if len(parts) > ctx.settings.max_subtasks:
+        note = f"question had {len(parts)} parts; only the first {ctx.settings.max_subtasks} are answered"
+    return parts[: ctx.settings.max_subtasks], note
+
+
+def _subtasks(parts: list[str], intents: list[tuple[Intent, float]]) -> list[SubTask]:
+    return [SubTask(id=f"t{i + 1}", text=p, intent=it, intent_confidence=conf, depends_on=[f"t{i}"] if i else [])
+            for i, (p, (it, conf)) in enumerate(zip(parts, intents))]
+
+
 def rules_plan(text: str, ctx: AgentContext) -> Plan:
     if MEDICAL.search(text):
         scope = "medical_advice"
@@ -86,40 +100,37 @@ def rules_plan(text: str, ctx: AgentContext) -> Plan:
         scope = "in_scope"
     if scope == "unrelated":
         return Plan(subtasks=[SubTask(id="t1", text=text, intent=Intent.OUT_OF_SCOPE)], mode="rules", scope=scope)
-    parts = [p.strip(" ,") for p in SPLIT.split(text) if p and len(p.strip(" ,?.")) > 3]
-    parts = parts or [text]
-    subtasks = []
-    for i, p in enumerate(parts[: ctx.settings.max_subtasks]):
-        intent, conf = classify(p)
-        if scope == "medical_advice":
-            intent, conf = Intent.LOOKUP, 0.8
-        subtasks.append(SubTask(id=f"t{i + 1}", text=p, intent=intent, intent_confidence=conf,
-                                depends_on=[f"t{i}"] if i else []))
-    note = None
-    if len(parts) > ctx.settings.max_subtasks:
-        note = f"question had {len(parts)} parts; only the first {ctx.settings.max_subtasks} are answered"
-    return Plan(subtasks=subtasks, mode="rules", scope=scope, note=note)
+    parts, note = split_parts(text, ctx)
+    intents = [(Intent.LOOKUP, 0.8) if scope == "medical_advice" else classify(p) for p in parts]
+    return Plan(subtasks=_subtasks(parts, intents), mode="rules", scope=scope, note=note)
 
 
 def llm_plan(text: str, ctx: AgentContext) -> Plan:
+    """LLM decides scope (and intent where the keyword rules are unsure); the deterministic splitter decides the
+    sub-question boundaries and keeps the user's exact wording.
+
+    Measured with gpt-4o-mini: letting the LLM split/rewrite broke exact names ("Nail Polish and Enamel" ->
+    "Nail Polish"), split "X or CAS Y" into two questions and split comparisons apart. Explicit keyword signals
+    therefore win; the LLM fills in where the rules only had a default guess.
+    """
     out: LLMPlan = ctx.llm.structured(prompt("planner"), wrap_user(text), LLMPlan)
-    if out.scope == "unrelated":
+    has_signal = has_domain_signal(text, ctx)
+    if out.scope == "unrelated" and not has_signal:
         return Plan(subtasks=[SubTask(id="t1", text=text, intent=Intent.OUT_OF_SCOPE)], mode="llm", scope="unrelated")
-    subs = [s for s in out.subtasks if s.text.strip()][: ctx.settings.max_subtasks] or []
-    if not subs:
-        raise LLMUnavailable("planner returned no subtasks")
-    subtasks = []
-    for i, s in enumerate(subs):
-        intent = Intent(s.intent)
-        if intent == Intent.OUT_OF_SCOPE and out.scope == "in_scope":
-            intent = classify(s.text)[0]
-        if out.scope == "medical_advice":
-            intent = Intent.LOOKUP
-        subtasks.append(SubTask(id=f"t{i + 1}", text=s.text.strip(), intent=intent, intent_confidence=0.9,
-                                depends_on=[f"t{i}"] if i else []))
-    # Deterministic safety net: medical phrasing is refused even if the LLM missed it.
-    scope = "medical_advice" if MEDICAL.search(text) else out.scope
-    return Plan(subtasks=subtasks, mode="llm", scope=scope)
+    scope = "medical_advice" if MEDICAL.search(text) else ("in_scope" if out.scope == "unrelated" else out.scope)
+    parts, note = split_parts(text, ctx)
+    llm_intents = [Intent(s.intent) for s in out.subtasks if s.text.strip()]
+    same_shape = len(llm_intents) == len(parts)
+    intents: list[tuple[Intent, float]] = []
+    for i, p in enumerate(parts):
+        rule_intent, rule_conf = classify(p)
+        if scope == "medical_advice":
+            intents.append((Intent.LOOKUP, 0.8))
+        elif rule_conf >= 0.9 or not same_shape or llm_intents[i] == Intent.OUT_OF_SCOPE:
+            intents.append((rule_intent, rule_conf))  # explicit keyword signal (or LLM split differently)
+        else:
+            intents.append((llm_intents[i], 0.85))  # rules only had a default guess; trust the LLM
+    return Plan(subtasks=_subtasks(parts, intents), mode="llm+rules", scope=scope, note=note)
 
 
 def planner_node(state: TurnState, ctx: AgentContext) -> dict:

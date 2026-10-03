@@ -22,7 +22,8 @@ intent per sub-question (pick one):
 - out_of_scope: only if scope is not in_scope
 
 Rules:
-- Rewrite each sub-question so it is understandable on its own (resolve "it", "those", "them").
-- Do not split a single question just because it has several filters.
+- Split only where the user asks separate questions. Alternatives ("X or Y"), comparisons ("X vs Y") and
+  several filters are ONE question.
+- Copy each sub-question's wording from the user; do not paraphrase or shorten names.
 - Keep entity names exactly as the user wrote them (including misspellings); do not correct or expand them.
 - Never answer the question. Output only the JSON object.

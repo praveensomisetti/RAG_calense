@@ -203,6 +203,8 @@ Each run checks:
 | Held-out paraphrases, **first run before any fixes** | 14 | **10** | 0.60 | 1.00 | 0.86 |
 | Held-out after the generic fixes it exposed (now contaminated) | 14 | 14 | 1.00 | 1.00 | 1.00 |
 
+**First LLM-mode run** (`eval --quick`, gpt-4o-mini, gte-large vectors on): **7/10**. All three failures came from the LLM planner rewriting or splitting questions: it shortened "Nail Polish and Enamel" to "Nail Polish", split "formaldehyde **or** CAS 75-07-0" into two questions, and split a comparison apart. The planner now lets the deterministic splitter fix sub-question boundaries and wording, and the LLM decides scope (plus intent only where the keyword rules have no explicit signal). Three regression tests replay that exact LLM behaviour. Re-run `chemrag eval --quick` to get the updated LLM-mode score.
+
 The honest generalisation number is the **10/14 first run**
 ([`evals/results/holdout_first_run_untuned.md`](evals/results/holdout_first_run_untuned.md)). It failed on:
 - misspelled chemicals with no domain keyword,
