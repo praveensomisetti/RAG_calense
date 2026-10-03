@@ -11,27 +11,71 @@ Ask a question in plain English, for example *"Which products contain CAS 75-07-
 
 The full design is in [`PLAN.md`](PLAN.md). Profiling numbers are in [`docs/profiling_output.txt`](docs/profiling_output.txt).
 
-```
-make demo          # creates .venv, builds DuckDB + the Chroma index, asks 6 sample questions
-make ask Q="Which brands report retinyl palmitate in sunscreens?"
-```
+Setup takes about 10 minutes; see §1.
 
 ---
 
-## 1. Quickstart
+## 1. Local setup (step by step)
 
-Requirements: Python 3.11+ on Linux or macOS. The system is CPU-only, runs no servers, and is sized for an 8 GB RAM laptop.
+Requirements: **Python 3.11 or newer**, git, about 3 GB free disk (the venv, plus the ~670 MB gte-large model), and 8 GB RAM. CPU only; no servers or Docker.
 
 ```bash
-cp .env.example .env            # optional: set GEMINI_API_KEY; leave it empty for deterministic mode
-make setup                      # venv + CPU-only torch + package
-make build                      # ETL (≈25 s) + gte-large embeddings of ~3.8k entity names into embedded Chroma
-make demo
-chemrag ask "Top 5 companies by number of products containing crystalline silica"
-chemrag ask "..." --json        # raw output contract
+# 1. Clone and switch to the branch that has the code
+git clone https://github.com/praveensomisetti/RAG_calense.git
+cd RAG_calense
+git checkout claude/chemical-disclosure-orchestrator-plan-bqeqyj
+
+# 2. Create and activate a virtual environment
+python3 --version                 # must be 3.11+
+python3 -m venv .venv
+source .venv/bin/activate         # Windows PowerShell: .venv\Scripts\Activate.ps1   (cmd: .venv\Scripts\activate.bat)
+python -m pip install --upgrade pip
+
+# 3. Install CPU-only PyTorch first (avoids a ~2 GB CUDA download; on macOS plain `pip install torch` is already CPU)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# 4. Install the project + dependencies (defined in pyproject.toml)
+pip install -r requirements.txt   # same as: pip install -e ".[dev]"
+
+# 5. Configure
+cp .env.example .env              # Windows: copy .env.example .env
+#   edit .env: set GEMINI_API_KEY=...   (leave empty to run in deterministic no-LLM mode)
+
+# 6. Check the environment (RAM, model download, Gemini key, exact Gemini model id)
+chemrag doctor
+#   if "Gemini: model not found", copy one of the listed flash model ids into CHEMRAG_LLM_MODEL in .env
+
+# 7. Build the data: CSV -> DuckDB (~25 s), then entity names -> gte-large -> Chroma
+chemrag build                     # first run downloads gte-large (~670 MB)
+#   optional: chemrag build --products   (also embeds 33k product names, ~10-25 min on CPU)
+
+# 8. Verify
+pytest -q                         # 86 tests
+chemrag eval                      # golden set (writes evals/results/)
+
+# 9. Ask questions
+chemrag ask "Which products contain CAS 75-07-0?"
+chemrag ask "What chemicals are reported for Sally Hansen in Nail Polish and Enamel?"
+chemrag ask "Summarize reporting trends over time for Nail Products" --json
+```
+
+On macOS/Linux, `make setup`, `make build` and `make demo` do steps 2–4, 7 and 9 in one go. On Windows, use the commands above, since `make` is usually not installed.
+
+| Problem | Fix |
+|---|---|
+| `chemrag: command not found` | Activate the venv (step 2), or run `python -m chemrag.cli ...`. |
+| gte-large download fails or is slow (proxy, firewall) | The build continues in lexical-only mode. Retry later, or set `CHEMRAG_EMBED_MODEL=thenlper/gte-base` (~220 MB). |
+| Low memory | Use `CHEMRAG_EMBED_MODEL=thenlper/gte-base`, or pass `--no-vectors` to `ask`. |
+| Gemini errors (429 / quota) | Answers still come back (agents fall back to rules, with an `llm_unavailable` warning), or use `--no-llm`. |
+| Changed the CSV or the synonym YAML | Run `chemrag build` again; it detects the change via the file hash. Use `--force` to rebuild everything. |
+
+### Everyday commands
+
+```bash
+chemrag ask "..." [--json] [--no-llm] [--no-vectors] [--assume-best] [--limit 20] [--page 2]
 chemrag replay <request_id>     # re-runs the logged SQL with no LLM and checks the results are identical
-chemrag doctor                  # RAM, DB, index, embedding model, Gemini key and model id
-make test && make eval          # 85 tests; golden evaluation set
+chemrag eval --holdout          # held-out paraphrase set
+chemrag graph                   # regenerate docs/graph.md from the compiled LangGraph
 ```
 
 | Situation | Behaviour |
@@ -39,7 +83,7 @@ make test && make eval          # 85 tests; golden evaluation set
 | `GEMINI_API_KEY` unset or `--no-llm` | All agents use deterministic rules. Every example below works this way. |
 | Gemini call fails (429, timeout, bad JSON) | That agent falls back to rules and adds an `llm_unavailable` warning. |
 | gte-large or Chroma unavailable | Entity resolution uses spelling-based (lexical) matching only, with a `vector_unavailable` info warning. |
-| Product names | `make build PRODUCTS=1` also embeds the ~33k product names. This is opt-in (see §6). |
+| Product names | `chemrag build --products` also embeds the ~33k product names. This is opt-in (see §6). |
 
 ---
 

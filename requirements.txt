@@ -1,0 +1,4 @@
+# Installs the project (and its `chemrag` command) plus dev tools.
+# Dependencies are defined once, in pyproject.toml.
+# Install CPU-only torch FIRST (see README "Local setup"), then:  pip install -r requirements.txt
+-e .[dev]
