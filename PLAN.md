@@ -911,6 +911,7 @@ Things I'd flag as **over-engineering** and skip unless asked:
 | Trade Secret rows excluded from all queries | Counted as products; excluded only from chemical listings, with a separate count | Excluding them everywhere under-counted products whose only reported chemical is a trade secret. |
 | — | Added a `chemical_family` alias level (e.g. "retinoids", "crystalline silica") and a non-blocking brand+product guess for unquoted product names | Found during evaluation. |
 | Qdrant (embedded) as the vector DB | **Chroma** (embedded `PersistentClient`, cosine HNSW, `$contains` filters on list metadata), behind the same `VectorStore` interface | Measured: a product-name question peaked at 1.43 GB with embedded Qdrant and 0.41 GB with Chroma; the index build dropped from 0.60 GB to 0.34 GB and ran faster. No other module changed. |
+| Gemini as the LLM | **OpenAI** (`openai` SDK, Structured Outputs via `chat.completions.parse`, default `gpt-5-mini` with `reasoning_effort=low`); Gemini kept as an optional provider | User switched to an OpenAI key. Same one-method `LLMClient` interface, so no agent code changed. Added a circuit breaker: hard failures disable the LLM for the rest of the run. |
 | Golden set ≥ 25 | 35 golden cases plus a 14-case **held-out** paraphrase set, with its first untuned run kept as the honest generalisation number | Avoids reporting only in-sample accuracy. |
 
 Not verifiable in the build sandbox, because Hugging Face downloads were blocked and there was no Gemini key:

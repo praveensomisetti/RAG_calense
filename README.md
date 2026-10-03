@@ -39,11 +39,11 @@ pip install -r requirements.txt   # same as: pip install -e ".[dev]"
 
 # 5. Configure
 cp .env.example .env              # Windows: copy .env.example .env
-#   edit .env: set GEMINI_API_KEY=...   (leave empty to run in deterministic no-LLM mode)
+#   edit .env: set OPENAI_API_KEY=sk-...   (leave empty to run in deterministic no-LLM mode)
 
-# 6. Check the environment (RAM, model download, Gemini key, exact Gemini model id)
+# 6. Check the environment (RAM, model download, OpenAI key, model id + one test call)
 chemrag doctor
-#   if "Gemini: model not found", copy one of the listed flash model ids into CHEMRAG_LLM_MODEL in .env
+#   if "LLM (openai): model not found", copy one of the listed mini/nano model ids into CHEMRAG_LLM_MODEL in .env
 
 # 7. Build the data: CSV -> DuckDB (~25 s), then entity names -> gte-large -> Chroma
 chemrag build                     # first run downloads gte-large (~670 MB)
@@ -66,7 +66,7 @@ On macOS/Linux, `make setup`, `make build` and `make demo` do steps 2–4, 7 and
 | `chemrag: command not found` | Activate the venv (step 2), or run `python -m chemrag.cli ...`. |
 | gte-large download fails or is slow (proxy, firewall) | The build continues in lexical-only mode. Retry later, or set `CHEMRAG_EMBED_MODEL=thenlper/gte-base` (~220 MB). |
 | Low memory | Use `CHEMRAG_EMBED_MODEL=thenlper/gte-base`, or pass `--no-vectors` to `ask`. |
-| Gemini errors (429 / quota) | Answers still come back (agents fall back to rules, with an `llm_unavailable` warning), or use `--no-llm`. |
+| OpenAI errors (429 / quota / no credit) | Answers still come back (agents fall back to rules, with an `llm_unavailable` warning), or use `--no-llm`. |
 | Changed the CSV or the synonym YAML | Run `chemrag build` again; it detects the change via the file hash. Use `--force` to rebuild everything. |
 
 ### Everyday commands
@@ -80,10 +80,23 @@ chemrag graph                   # regenerate docs/graph.md from the compiled Lan
 
 | Situation | Behaviour |
 |---|---|
-| `GEMINI_API_KEY` unset or `--no-llm` | All agents use deterministic rules. Every example below works this way. |
-| Gemini call fails (429, timeout, bad JSON) | That agent falls back to rules and adds an `llm_unavailable` warning. |
+| `OPENAI_API_KEY` unset or `--no-llm` | All agents use deterministic rules. Every example below works this way. |
+| OpenAI call fails (429, timeout, bad output) | That agent falls back to rules and adds an `llm_unavailable` warning. A hard failure (bad key, unknown model, no network) switches the LLM off for the rest of the run, so later agents don't wait on retries. |
 | gte-large or Chroma unavailable | Entity resolution uses spelling-based (lexical) matching only, with a `vector_unavailable` info warning. |
 | Product names | `chemrag build --products` also embeds the ~33k product names. This is opt-in (see §6). |
+
+---
+
+### Choosing an OpenAI model (budget)
+
+The LLM does three small jobs per question: classify and split the question, extract entity mentions, and write 2–6 bullet points from a fact sheet. Counting, SQL and citations never touch it. So a small model is enough.
+
+| Model | Use when | Approx. cost per question* |
+|---|---|---|
+| `gpt-5-mini` (**default**) | Best balance; reliable structured outputs | ~$0.003–0.006 |
+| `gpt-5-nano` | Cheapest; fine for a demo, slightly weaker on unusual phrasing | ~$0.001 |
+
+\*About 3 calls per question, ~4k input and ~1–2k output tokens with `reasoning_effort=low`. Prices change, so check OpenAI's pricing page. `chemrag ask ... --json` reports the tokens each answer used in `meta.llm_tokens`. A full `chemrag eval` (35 questions) costs roughly $0.10–0.25 with `gpt-5-mini`.
 
 ---
 
@@ -112,14 +125,14 @@ flowchart LR
 | Node | What it does | LLM? |
 |---|---|---|
 | **guard** | Caps input at 1,000 characters and strips instruction-like sentences ("ignore previous instructions…"). | no |
-| **planner** | Checks scope (in scope / medical advice / unrelated), classifies intent (lookup, list, compare, summarize, trend, data_quality, coverage, out_of_scope) and splits the question into ≤4 sub-questions. | Gemini, with keyword rules as fallback |
-| **extractor** | Finds CAS numbers, years and date ranges, discontinued/removed wording, group-by and top-N, plus entity mentions (exact alias matches, cue phrases, quoted product names). Follow-up sub-questions inherit the previous sub-question's constraints. | rules first; Gemini can only *add* mentions it quotes verbatim from the question |
+| **planner** | Checks scope (in scope / medical advice / unrelated), classifies intent (lookup, list, compare, summarize, trend, data_quality, coverage, out_of_scope) and splits the question into ≤4 sub-questions. | LLM, with keyword rules as fallback |
+| **extractor** | Finds CAS numbers, years and date ranges, discontinued/removed wording, group-by and top-N, plus entity mentions (exact alias matches, cue phrases, quoted product names). Follow-up sub-questions inherit the previous sub-question's constraints. | rules first; the LLM can only *add* mentions it quotes verbatim from the question |
 | **resolver** | Maps each mention to canonical IDs, in order: CAS check-digit path → exact/alias match → rapidfuzz spelling score fused with gte-large/Chroma similarity. Returns ranked candidates and flags ambiguity. | no |
 | **retrieval** | Turns product-name mentions into `CDPHId`s using lexical matching, plus vectors when the products index exists. | no |
 | **clarify** | Asks which candidate was meant, using LangGraph `interrupt()` in the interactive CLI. With `--json` or `--assume-best` it either returns a `clarification` response or proceeds with the top candidate and a warning. | no |
 | **query** | Builds a typed `Filters` object and runs fixed SQL templates. Also handles out-of-range dates, unmatched entities, empty results (re-runs the count with one constraint dropped at a time to show which one emptied the result), dominance, trade-secret and synonym warnings. | no |
-| **synthesizer** | Builds a numbered fact sheet (F1..Fn) from query results. The **short answer is templated**. Details are optional Gemini bullets citing `[F#]`, followed by a deterministic listing. | Gemini (details only) |
-| **verifier** | Checks that every number is in the facts or rows, every bullet cites existing facts, and the text has no medical advice or prompt echo. If a check fails, the Gemini text is dropped and the templated details are used. | no |
+| **synthesizer** | Builds a numbered fact sheet (F1..Fn) from query results. The **short answer is templated**. Details are optional LLM bullets citing `[F#]`, followed by a deterministic listing. | LLM (details only) |
+| **verifier** | Checks that every number is in the facts or rows, every bullet cites existing facts, and the text has no medical advice or prompt echo. If a check fails, the LLM text is dropped and the templated details are used. | no |
 | **finalize** | Builds the response JSON and computes confidence with a documented formula. Saves `runs/<id>.json` for replay. | no |
 
 **State.** One Pydantic `TurnState` (`chemrag/state.py`) flows through the graph. List fields are append-only, so the `trace` *is* the query plan, and a clarification appends a newer resolution instead of overwriting the old one.
@@ -217,7 +230,7 @@ The golden set covers:
 - the resolver;
 - the verifier;
 - graph routers;
-- end-to-end graph runs, including interactive clarification resume and a scripted fake Gemini (both a grounded narrative and a hallucinated number that triggers the fallback).
+- end-to-end graph runs, including interactive clarification resume and a scripted fake LLM (both a grounded narrative and a hallucinated number that triggers the fallback).
 
 ---
 
@@ -246,17 +259,17 @@ DuckDB is limited to `memory_limit=1GB` and 2 threads. If memory is still tight:
 
 - **DuckDB for facts, Chroma for names.** Numbers always come from SQL. Vectors only help pick *which* entity was meant.
 - **No text-to-SQL.** There is a fixed tool set (`find_products`, `count_products`, `chemicals_for`, `trend_by_year`, `dataset_coverage`, `dq_summary`, plus `compare`/`summarize` compositions). SQL is built from enum-whitelisted fragments with bound parameters, and the connection is read-only with external access disabled.
-- **LangGraph used narrowly.** It provides a typed graph, conditional edges, `interrupt()` for clarification, and a checkpointer. There are no LangChain agents, retrievers or LLM wrappers. Gemini is called through a one-method `LLMClient` interface (`google-genai`, JSON-schema output, Pydantic-validated).
-- **Rules first, LLM second.** The system answers every example correctly with no LLM at all. Gemini improves paraphrase coverage and the readability of the details, and the verifier keeps its text grounded.
+- **LangGraph used narrowly.** It provides a typed graph, conditional edges, `interrupt()` for clarification, and a checkpointer. There are no LangChain agents, retrievers or LLM wrappers. The LLM is called through a one-method `LLMClient` interface. The default is OpenAI (`openai` SDK, Structured Outputs via `chat.completions.parse` with Pydantic schemas). Gemini remains an optional alternative (`CHEMRAG_LLM_PROVIDER=gemini`).
+- **Rules first, LLM second.** The system answers every example correctly with no LLM at all. The LLM improves paraphrase coverage and the readability of the details, and the verifier keeps its text grounded.
 - **Curated synonym groups instead of embedding-based chemical synonymy.** There are only 123 names, so a reviewed YAML file is more correct than nearest neighbours.
 
 ## 8. Known limitations
 
-- **Neither gte-large nor Gemini was run in the build environment.**
-  - Hugging Face downloads were blocked by that sandbox's network policy. The vector path was exercised end to end with the offline `hash-ngram` embedder (same Chroma code, fusion and calibration).
-  - Gemini was tested with a scripted fake client.
-  - Run `chemrag doctor` on your machine to confirm the gte-large download and the exact Gemini 3.8 Flash model id (default `gemini-3.8-flash`, set with `CHEMRAG_LLM_MODEL`). Then run `make eval` without `--no-llm` to get LLM-mode numbers.
-- The rule-based extractor is pattern-driven. Unusual phrasing may be missed in no-LLM mode, which the held-out set shows. Gemini mode is meant to cover that.
+- **Neither gte-large nor a live LLM was run in the build environment.**
+  - Hugging Face and the OpenAI API were blocked by that sandbox's network policy. The vector path was exercised end to end with the offline `hash-ngram` embedder (same Chroma code, fusion and calibration).
+  - The OpenAI client is tested with a fake SDK client (request shape, parsing, parameter fallback, circuit breaker), and the graph with a scripted fake LLM.
+  - Run `chemrag doctor` on your machine. It confirms the gte-large download, lists the model ids your key can use, and makes one test structured-output call. Then run `chemrag eval` (without `--no-llm`) to get LLM-mode numbers.
+- The rule-based extractor is pattern-driven. Unusual phrasing may be missed in no-LLM mode, which the held-out set shows. LLM mode is meant to cover that.
 - Dates are handled at year granularity ("June 2019" becomes 2019).
 - Comparing more than one dimension at once (e.g. companies × categories) is not supported; `compare` uses the first entity type that has two or more values.
 - Embedded Chroma is designed for a single process writing at a time, so don't run `chemrag build` while another `chemrag` process is using the same index.
@@ -273,7 +286,7 @@ chemrag/
   etl/                build_db.py, cas.py, normalize.py
   query/              filters.py (Filters → parameterised WHERE), tools.py (SQL templates)
   retrieval/          resolver.py, embed.py (gte-large / hash-ngram), vector_store.py (Chroma), build_index.py
-  llm/                base.py (interface + LLM schemas), gemini_client.py, null_client.py, prompts/*.md
+  llm/                base.py (interface + LLM schemas), openai_client.py, gemini_client.py (optional), null_client.py, prompts/*.md
   render/cli_render.py, cli.py
 config/chemical_groups.yaml   evals/   tests/   docs/   scripts/profile_data.py   data/raw/
 ```

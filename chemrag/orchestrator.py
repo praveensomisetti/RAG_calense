@@ -41,6 +41,7 @@ class Orchestrator:
         rid = uuid.uuid4().hex[:12]
         config = {"configurable": {"thread_id": rid}, "recursion_limit": 60}
         opts = options or RunOptions()
+        usage_before = dict(getattr(self.llm, "usage", {}) or {})
         if on_clarify is not None:
             opts = opts.model_copy(update={"interactive": True})
         out = self.app.invoke(TurnState(request_id=rid, question=question, options=opts), config)
@@ -51,6 +52,9 @@ class Orchestrator:
         values = self.app.get_state(config).values
         resp = values["response"]
         resp = resp if isinstance(resp, Response) else Response.model_validate(resp)
+        usage_after = getattr(self.llm, "usage", None)
+        if usage_after:  # LLM tokens spent on this question (cost visibility)
+            resp.meta["llm_tokens"] = {k: v - usage_before.get(k, 0) for k, v in usage_after.items()}
         if save:
             self._save(resp, values)
         return resp, values

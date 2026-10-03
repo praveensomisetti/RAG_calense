@@ -1,6 +1,6 @@
 """Planner / orchestrator: scope check, intent classification, decomposition.
 
-LLM (Gemini, structured output) when available; deterministic keyword rules otherwise or on failure.
+LLM (OpenAI by default, structured output) when available; deterministic keyword rules otherwise or on failure.
 The planner never decides *which tools run* - routers and the query agent do that deterministically.
 """
 

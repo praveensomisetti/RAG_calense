@@ -5,7 +5,7 @@ Three passes, merged (deterministic first, the LLM only adds):
   2. gazetteer - longest exact matches against the canonical alias table (chemicals, categories, ...)
   3. cue rules - phrases after "contains", "brand", "by/for/from <Capitalised>", quoted strings; these catch
                  misspellings that the gazetteer cannot, and are resolved fuzzily downstream
-  (+ LLM)      - Gemini structured extraction, merged without duplicating deterministic mentions
+  (+ LLM)      - LLM (OpenAI by default) structured extraction, merged without duplicating deterministic mentions
 """
 
 from __future__ import annotations

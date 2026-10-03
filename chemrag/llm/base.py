@@ -33,7 +33,7 @@ def wrap_user(question: str) -> str:
             f"{question}\n</user_question>")
 
 
-# ----------------------------------------------------------------- LLM-facing schemas (kept simple for Gemini)
+# ----------------------------------------------------------------- LLM-facing schemas (kept simple: strict structured-output compatible)
 IntentName = Literal["lookup", "list", "compare", "summarize", "trend", "data_quality", "coverage", "out_of_scope"]
 
 

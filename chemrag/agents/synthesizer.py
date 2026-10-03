@@ -2,7 +2,7 @@
 
 * Facts (F1..Fn) are built deterministically from tool results - every number in an answer traces to one.
 * `answer_short` is always templated from facts (never LLM-written, so it cannot contain an invented number).
-* `answer_details` = optional Gemini narrative bullets citing [F#] (checked by the verifier) + a deterministic
+* `answer_details` = optional LLM narrative bullets citing [F#] (checked by the verifier) + a deterministic
   listing/breakdown section.
 """
 

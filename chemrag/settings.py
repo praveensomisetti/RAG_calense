@@ -26,6 +26,10 @@ class Thresholds:
     dominance_share: float = 0.50  # one chemical > 50% of matched products -> warning
 
 
+# Budget-friendly defaults per provider (override with CHEMRAG_LLM_MODEL; `chemrag doctor` lists available ids).
+DEFAULT_MODELS = {"openai": "gpt-5-mini", "gemini": "gemini-3.8-flash"}
+
+
 @dataclass(frozen=True)
 class Settings:
     csv_path: Path
@@ -36,6 +40,7 @@ class Settings:
     llm_provider: str
     llm_model: str
     llm_timeout_s: float
+    openai_api_key: str | None
     gemini_api_key: str | None
     embed_model: str
     embed_batch: int
@@ -53,16 +58,20 @@ class Settings:
     def manifest_path(self) -> Path:
         return self.vector_path.parent / "index_manifest.json"
 
+    llm_reasoning_effort: str | None = "low"
+    openai_base_url: str | None = None
+
     @property
     def llm_enabled(self) -> bool:
-        return self.llm_provider == "gemini" and bool(self.gemini_api_key)
+        key = {"openai": self.openai_api_key, "gemini": self.gemini_api_key}.get(self.llm_provider)
+        return bool(key)
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     load_dotenv(ROOT / ".env")
-    provider = os.getenv("CHEMRAG_LLM_PROVIDER", "gemini").strip().lower()
-    key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or None
+    provider = os.getenv("CHEMRAG_LLM_PROVIDER", "openai").strip().lower()
+    default_model = DEFAULT_MODELS.get(provider, "")
     return Settings(
         csv_path=_path("CHEMRAG_CSV_PATH", "data/raw/interviewtestdataset.csv"),
         db_path=_path("CHEMRAG_DB_PATH", "data/processed/cscp.duckdb"),
@@ -70,9 +79,12 @@ def get_settings() -> Settings:
         groups_path=_path("CHEMRAG_GROUPS_PATH", "config/chemical_groups.yaml"),
         runs_dir=_path("CHEMRAG_RUNS_DIR", "runs"),
         llm_provider=provider,
-        llm_model=os.getenv("CHEMRAG_LLM_MODEL", "gemini-3.8-flash"),
+        llm_model=os.getenv("CHEMRAG_LLM_MODEL") or default_model,
         llm_timeout_s=float(os.getenv("CHEMRAG_LLM_TIMEOUT_S", "20")),
-        gemini_api_key=key,
+        openai_api_key=os.getenv("OPENAI_API_KEY") or None,
+        gemini_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or None,
+        llm_reasoning_effort=os.getenv("CHEMRAG_LLM_REASONING_EFFORT", "low").strip() or None,
+        openai_base_url=os.getenv("OPENAI_BASE_URL") or None,
         embed_model=os.getenv("CHEMRAG_EMBED_MODEL", "thenlper/gte-large"),
         embed_batch=int(os.getenv("CHEMRAG_EMBED_BATCH", "32")),
         torch_threads=int(os.getenv("CHEMRAG_TORCH_THREADS", str(min(4, os.cpu_count() or 1)))),

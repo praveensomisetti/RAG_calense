@@ -88,7 +88,7 @@ def etl() -> None:
 @app.command()
 def ask(question: str = typer.Argument(..., help="Natural-language question."),
         as_json: bool = typer.Option(False, "--json", help="Print the raw JSON response contract."),
-        no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic rules only (no Gemini calls)."),
+        no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic rules only (no LLM calls)."),
         no_vectors: bool = typer.Option(False, "--no-vectors", help="Lexical-only entity resolution."),
         assume_best: bool = typer.Option(False, "--assume-best", help="On ambiguity, use the best match + warning."),
         interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Ask on ambiguity."),
@@ -147,7 +147,7 @@ def run_eval(no_llm: bool = typer.Option(False, "--no-llm"), only: str = typer.O
 
 @app.command()
 def doctor() -> None:
-    """Check environment: RAM, DB, index, embedding model, Gemini key and model id."""
+    """Check environment: RAM, DB, index, embedding model, LLM key and model id."""
     s = get_settings()
     t = Table("check", "status", "detail")
     try:
@@ -171,19 +171,26 @@ def doctor() -> None:
         t.add_row("Embedding model", "ok", f"{s.embed_model} dim={e.dim}")
     except EmbeddingUnavailable as ex:
         t.add_row("Embedding model", "unavailable", str(ex)[:160])
-    if not s.gemini_api_key:
-        t.add_row("Gemini", "off", "GEMINI_API_KEY not set → deterministic rules mode")
-    else:
-        from chemrag.llm.gemini_client import GeminiClient
+    from chemrag.llm.null_client import make_llm
 
+    llm = make_llm(s)
+    label = f"LLM ({s.llm_provider})"
+    if not llm.available:
+        t.add_row(label, "off", f"{getattr(llm, 'reason', '')} → deterministic rules mode")
+    else:
         try:
-            models = GeminiClient(s.gemini_api_key, s.llm_model, 15).list_models()
-            ok = any(m.endswith("/" + s.llm_model) or m == s.llm_model for m in models)
-            flash = [m for m in models if "flash" in m][:8]
-            t.add_row("Gemini", "ok" if ok else "model not found",
-                      f"configured {s.llm_model}; available flash models: {', '.join(flash)}")
-        except Exception as ex:
-            t.add_row("Gemini", "error", str(ex)[:160])
+            models = llm.list_models()
+            ok = any(m == s.llm_model or m.endswith("/" + s.llm_model) for m in models)
+            cheap = [m for m in models if any(k in m for k in ("mini", "nano", "flash"))][:10]
+            t.add_row(label, "ok" if ok else "model not found",
+                      f"configured {s.llm_model}; budget models available: {', '.join(cheap)}")
+            if ok:
+                from chemrag.llm.base import LLMSubTask
+
+                llm.structured("Classify the intent.", "How many products contain talc?", LLMSubTask)
+                t.add_row("LLM structured output", "ok", f"test call succeeded; tokens used {getattr(llm, 'usage', '-')}")
+        except Exception as ex:  # noqa: BLE001 - doctor reports, never crashes
+            t.add_row(label, "error", str(ex)[:200])
     t.add_row("Peak RSS", "info", f"{_peak_mb():.0f} MB")
     console.print(t)
 
