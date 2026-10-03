@@ -9,7 +9,7 @@ Ask a question in plain English, for example *"Which products contain CAS 75-07-
 - **a query plan**: every agent step, including the exact SQL and the values passed to it,
 - **assumptions, warnings and a confidence level**.
 
-**New to the repo?** Start with [`docs/REPO_GUIDE.md`](docs/REPO_GUIDE.md), which explains every folder and file: what it does and why.
+**New to the repo?** Start with [`docs/REPO_GUIDE.md`](docs/REPO_GUIDE.md), which explains every folder and file: what it does and why. Interview practice questions are in [`docs/INTERVIEW_PREP.md`](docs/INTERVIEW_PREP.md).
 The full design is in [`PLAN.md`](PLAN.md). Profiling numbers are in [`docs/profiling_output.txt`](docs/profiling_output.txt).
 
 Setup takes about 10 minutes; see §1.
