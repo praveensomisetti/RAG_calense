@@ -463,7 +463,7 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 | `chemrag build [--products] [--force] [--skip-index]` | ETL in a separate process (so its memory is released), then the vector index |
 | `chemrag ask "…" [--json] [--no-llm] [--no-vectors] [--assume-best] [--limit] [--page]` | Ask a question; pretty output or raw JSON |
 | `chemrag replay <id>` | Re-run a past answer's SQL and verify the results are identical |
-| `chemrag eval [--holdout] [--no-llm]` | Run an evaluation set and write a report |
+| `chemrag eval [--quick] [--holdout] [--no-llm]` | Run an evaluation set (`--quick` = 10 questions) and write a report |
 | `chemrag doctor` | Check RAM, database, index, embedding model, LLM key and model, and make one test LLM call |
 | `chemrag graph` | Regenerate `docs/graph.md` from the compiled graph |
 
