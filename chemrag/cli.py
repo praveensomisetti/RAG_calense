@@ -28,11 +28,11 @@ def _peak_mb() -> float:
 
 
 @app.command()
-def build(products: bool = typer.Option(False, "--products", help="Also embed ~33k product names (needs ~2 GB "
-                                                                    "more RAM at query time with gte-large)."),
-          skip_index: bool = typer.Option(False, help="Only build DuckDB; no embeddings / Qdrant."),
+def build(products: bool = typer.Option(False, "--products", help="Also embed ~33k product names "
+                                                                    "(adds ~10-25 min of CPU embedding with gte-large)."),
+          skip_index: bool = typer.Option(False, help="Only build DuckDB; no embeddings / Chroma."),
           force: bool = typer.Option(False, help="Rebuild everything even if unchanged.")) -> None:
-    """ETL the CSV into DuckDB, then embed entity (and optionally product) names into embedded Qdrant."""
+    """ETL the CSV into DuckDB, then embed entity (and optionally product) names into embedded Chroma."""
     import subprocess
 
     s = get_settings()
@@ -61,12 +61,12 @@ def build(products: bool = typer.Option(False, "--products", help="Also embed ~3
     if skip_index:
         console.print("[yellow]Skipping vector index (--skip-index); resolution will be lexical-only.[/]")
         return
-    console.print(f"[bold]2/2 Index[/] {s.embed_model} → embedded Qdrant at {s.qdrant_path}")
+    console.print(f"[bold]2/2 Index[/] {s.embed_model} → embedded Chroma at {s.vector_path}")
     from chemrag.retrieval.build_index import build_vector_index
     from chemrag.retrieval.embed import EmbeddingUnavailable
 
     try:
-        m = build_vector_index(s.db_path, s.qdrant_path, s.manifest_path, s.embed_model, sha, products=products,
+        m = build_vector_index(s.db_path, s.vector_path, s.manifest_path, s.embed_model, sha, products=products,
                                batch=s.embed_batch, threads=s.torch_threads, force=force, log=console.print)
         console.print(f"index ready: {m['collections']} (dim {m['dim']}, semantic floor {m['semantic_floor']:.3f})")
     except EmbeddingUnavailable as e:
@@ -160,10 +160,10 @@ def doctor() -> None:
     t.add_row("DuckDB", "ok" if s.db_path.exists() else "missing", str(s.db_path))
     if s.manifest_path.exists():
         m = json.loads(s.manifest_path.read_text())
-        t.add_row("Qdrant index", "ok" if m.get("model") == s.embed_model else "stale",
+        t.add_row("Chroma index", "ok" if m.get("model") == s.embed_model else "stale",
                   f"{m.get('model')} {m.get('collections')} products_complete={m.get('products_complete')}")
     else:
-        t.add_row("Qdrant index", "missing", "run `chemrag build`")
+        t.add_row("Chroma index", "missing", "run `chemrag build`")
     from chemrag.retrieval.embed import EmbeddingUnavailable, get_embedder
 
     try:

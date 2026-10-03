@@ -18,6 +18,10 @@
 > - **The 30 MB CSV is committed** under `data/raw/`.
 >
 > New §5.3 sets the memory budget, and §§5.2, 9, 11, 12 and 13 are updated.
+>
+> **Revision 4 (after implementation): the vector DB is now Chroma (embedded `PersistentClient`), not Qdrant.**
+> Measured on 33k product vectors, embedded Qdrant held about 1 GB in RAM and Chroma about 0.1 GB. Sections
+> 0–13 below still say "Qdrant" as the original plan; the code, README and §14 reflect Chroma.
 
 ---
 
@@ -906,6 +910,7 @@ Things I'd flag as **over-engineering** and skip unless asked:
 | `product_detail` tool | Covered by `chemicals_for` / `find_products` with a `cdph_ids` filter | Avoids a duplicate template. |
 | Trade Secret rows excluded from all queries | Counted as products; excluded only from chemical listings, with a separate count | Excluding them everywhere under-counted products whose only reported chemical is a trade secret. |
 | — | Added a `chemical_family` alias level (e.g. "retinoids", "crystalline silica") and a non-blocking brand+product guess for unquoted product names | Found during evaluation. |
+| Qdrant (embedded) as the vector DB | **Chroma** (embedded `PersistentClient`, cosine HNSW, `$contains` filters on list metadata), behind the same `VectorStore` interface | Measured: a product-name question peaked at 1.43 GB with embedded Qdrant and 0.41 GB with Chroma; the index build dropped from 0.60 GB to 0.34 GB and ran faster. No other module changed. |
 | Golden set ≥ 25 | 35 golden cases plus a 14-case **held-out** paraphrase set, with its first untuned run kept as the honest generalisation number | Avoids reporting only in-sample accuracy. |
 
 Not verifiable in the build sandbox, because Hugging Face downloads were blocked and there was no Gemini key:

@@ -30,7 +30,7 @@ class Thresholds:
 class Settings:
     csv_path: Path
     db_path: Path
-    qdrant_path: Path
+    vector_path: Path
     groups_path: Path
     runs_dir: Path
     llm_provider: str
@@ -51,7 +51,7 @@ class Settings:
 
     @property
     def manifest_path(self) -> Path:
-        return self.qdrant_path.parent / "index_manifest.json"
+        return self.vector_path.parent / "index_manifest.json"
 
     @property
     def llm_enabled(self) -> bool:
@@ -66,7 +66,7 @@ def get_settings() -> Settings:
     return Settings(
         csv_path=_path("CHEMRAG_CSV_PATH", "data/raw/interviewtestdataset.csv"),
         db_path=_path("CHEMRAG_DB_PATH", "data/processed/cscp.duckdb"),
-        qdrant_path=_path("CHEMRAG_QDRANT_PATH", "data/processed/qdrant"),
+        vector_path=_path("CHEMRAG_VECTOR_PATH", "data/processed/chroma"),
         groups_path=_path("CHEMRAG_GROUPS_PATH", "config/chemical_groups.yaml"),
         runs_dir=_path("CHEMRAG_RUNS_DIR", "runs"),
         llm_provider=provider,

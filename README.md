@@ -12,7 +12,7 @@ Ask a question in plain English, for example *"Which products contain CAS 75-07-
 The full design is in [`PLAN.md`](PLAN.md). Profiling numbers are in [`docs/profiling_output.txt`](docs/profiling_output.txt).
 
 ```
-make demo          # creates .venv, builds DuckDB + the Qdrant index, asks 6 sample questions
+make demo          # creates .venv, builds DuckDB + the Chroma index, asks 6 sample questions
 make ask Q="Which brands report retinyl palmitate in sunscreens?"
 ```
 
@@ -25,7 +25,7 @@ Requirements: Python 3.11+ on Linux or macOS. The system is CPU-only, runs no se
 ```bash
 cp .env.example .env            # optional: set GEMINI_API_KEY; leave it empty for deterministic mode
 make setup                      # venv + CPU-only torch + package
-make build                      # ETL (≈25 s) + gte-large embeddings of ~3.8k entity names into embedded Qdrant
+make build                      # ETL (≈25 s) + gte-large embeddings of ~3.8k entity names into embedded Chroma
 make demo
 chemrag ask "Top 5 companies by number of products containing crystalline silica"
 chemrag ask "..." --json        # raw output contract
@@ -38,7 +38,7 @@ make test && make eval          # 85 tests; golden evaluation set
 |---|---|
 | `GEMINI_API_KEY` unset or `--no-llm` | All agents use deterministic rules. Every example below works this way. |
 | Gemini call fails (429, timeout, bad JSON) | That agent falls back to rules and adds an `llm_unavailable` warning. |
-| gte-large or Qdrant unavailable | Entity resolution uses spelling-based (lexical) matching only, with a `vector_unavailable` info warning. |
+| gte-large or Chroma unavailable | Entity resolution uses spelling-based (lexical) matching only, with a `vector_unavailable` info warning. |
 | Product names | `make build PRODUCTS=1` also embeds the ~33k product names. This is opt-in (see §6). |
 
 ---
@@ -60,7 +60,7 @@ flowchart LR
   C -->|non-interactive| F
   QA -->|next sub-question| X
   QA -->|done| S[synthesizer] --> V[verifier] --> F[finalize] --> A([answer JSON])
-  R -. names .-> VDB[(Qdrant embedded<br/>gte-large vectors)]
+  R -. names .-> VDB[(Chroma embedded<br/>gte-large vectors)]
   RT -. names .-> VDB
   QA -. parameterised SQL .-> DB[(DuckDB<br/>read-only)]
 ```
@@ -70,7 +70,7 @@ flowchart LR
 | **guard** | Caps input at 1,000 characters and strips instruction-like sentences ("ignore previous instructions…"). | no |
 | **planner** | Checks scope (in scope / medical advice / unrelated), classifies intent (lookup, list, compare, summarize, trend, data_quality, coverage, out_of_scope) and splits the question into ≤4 sub-questions. | Gemini, with keyword rules as fallback |
 | **extractor** | Finds CAS numbers, years and date ranges, discontinued/removed wording, group-by and top-N, plus entity mentions (exact alias matches, cue phrases, quoted product names). Follow-up sub-questions inherit the previous sub-question's constraints. | rules first; Gemini can only *add* mentions it quotes verbatim from the question |
-| **resolver** | Maps each mention to canonical IDs, in order: CAS check-digit path → exact/alias match → rapidfuzz spelling score fused with gte-large/Qdrant similarity. Returns ranked candidates and flags ambiguity. | no |
+| **resolver** | Maps each mention to canonical IDs, in order: CAS check-digit path → exact/alias match → rapidfuzz spelling score fused with gte-large/Chroma similarity. Returns ranked candidates and flags ambiguity. | no |
 | **retrieval** | Turns product-name mentions into `CDPHId`s using lexical matching, plus vectors when the products index exists. | no |
 | **clarify** | Asks which candidate was meant, using LangGraph `interrupt()` in the interactive CLI. With `--json` or `--assume-best` it either returns a `clarification` response or proceeds with the top candidate and a warning. | no |
 | **query** | Builds a typed `Filters` object and runs fixed SQL templates. Also handles out-of-range dates, unmatched entities, empty results (re-runs the count with one constraint dropped at a time to show which one emptied the result), dominance, trade-secret and synonym warnings. | no |
@@ -111,9 +111,9 @@ Source: 114,635 rows × 22 columns. The ETL (`chemrag/etl/build_db.py`) writes t
 
 ---
 
-## 4. Retrieval: gte-large + embedded Qdrant
+## 4. Retrieval: gte-large + embedded Chroma
 
-- **What is embedded:** only **names**. That is ~3.8k entity aliases (chemicals and synonyms, companies, brands, categories) and, optionally, ~33k product names. The 114k rows are never embedded: SQL answers row-level questions exactly, and Qdrant only answers *"which entity did the user mean?"*.
+- **What is embedded:** only **names**. That is ~3.8k entity aliases (chemicals and synonyms, companies, brands, categories) and, optionally, ~33k product names. The 114k rows are never embedded: SQL answers row-level questions exactly, and Chroma only answers *"which entity did the user mean?"*.
 - **Model:** `thenlper/gte-large` (1024-dim) via sentence-transformers on CPU. It loads lazily, so questions answered by exact, alias or CAS matches never load it. Settings are `max_seq_length=64`, `inference_mode`, and capped threads.
 - **Score fusion:** `0.65·lexical + 0.35·semantic`. gte-style cosine scores are compressed, so the semantic score is rescaled against a "random pair" floor measured at build time.
   - **Resolved** if score ≥ 0.75 and the runner-up is not within 0.05.
@@ -121,7 +121,7 @@ Source: 114,635 rows × 22 columns. The ETL (`chemrag/etl/build_db.py`) writes t
   - **Not found** below 0.75, with suggestions.
 
   These thresholds are in `chemrag/settings.py`.
-- **Qdrant:** runs in embedded local mode (`QdrantClient(path=...)`) with no server. Each collection is a separate store; see §6 for why.
+- **Chroma:** runs embedded (`chromadb.PersistentClient(path=...)`) with no server. One on-disk store holds an `entities` collection and an optional `products` collection, with cosine HNSW indexes. Each collection is loaded only when it is queried. Filters on list metadata (`brand_keys`, `company_keys`) use `$contains`. Qdrant was used first and replaced by Chroma; see §6 for why.
 
 ---
 
@@ -138,7 +138,7 @@ Each run checks:
 - required warnings,
 - refusal and clarification behaviour.
 
-| Set (no-LLM mode, lexical resolution) | Cases | Passed | Answer correctness | Citation precision | Entity resolution |
+| Set (no-LLM mode) | Cases | Passed | Answer correctness | Citation precision | Entity resolution |
 |---|---|---|---|---|---|
 | Golden (also used during development, so in-sample) | 35 | 35 | 1.00 | 1.00 | 1.00 |
 | Held-out paraphrases, **first run before any fixes** | 14 | **10** | 0.60 | 1.00 | 0.86 |
@@ -179,25 +179,28 @@ The golden set covers:
 
 ## 6. Resource budget (8 GB RAM, CPU only)
 
+All numbers below were measured in the build sandbox with the 512-dim offline embedder. gte-large (1024-dim) roughly doubles the vector part and adds the model itself.
+
 | Step | Measured peak RSS |
 |---|---|
 | `build` ETL step (separate process) | ~0.6 GB |
+| `build` index step, entities + 33k products into Chroma | ~0.34 GB (Qdrant: 0.60 GB) |
 | `ask`, lexical resolution | ~0.35 GB |
-| `ask` with the entities vector store open (512-d offline embedder) | ~0.46 GB |
-| `ask` on a product-name question with the optional 33k products store | ~1.4 GB at 512-d; **~2.5 GB estimated at 1024-d**, plus the model |
+| `ask` with vectors, entity question | ~0.34 GB |
+| `ask` on a product-name question with the products collection | **~0.41 GB** (embedded Qdrant: 1.43 GB) |
 | gte-large fp32 on CPU (estimate) | ~1.4–1.8 GB, loaded only for fuzzy matches |
 
-Embedded Qdrant loads a whole store into RAM when it opens (float64 vectors plus Python payloads). That is why entities and products are **separate stores**: the large products store only opens for product-name questions, and it is **opt-in** (`make build PRODUCTS=1`). Without it, product names are matched lexically, which already passes the golden and held-out product cases.
+**Why Chroma replaced Qdrant.** Embedded Qdrant loads a whole collection into RAM as Python objects. At 33k product vectors that was about 1 GB at 512-dim, so the products index could not fit next to gte-large on an 8 GB laptop. Chroma keeps its HNSW index on disk and loads a collection only when it is queried, so the same collection costs about 0.1 GB.
+
+The products collection is still **opt-in** (`make build PRODUCTS=1`), but only because embedding 33k names takes about 10–25 minutes on a laptop CPU, not because of memory. Without it, product names are matched lexically, which already passes the golden and held-out product cases.
 
 DuckDB is limited to `memory_limit=1GB` and 2 threads. If memory is still tight:
 1. set `CHEMRAG_EMBED_MODEL=thenlper/gte-base`, then
 2. use `--no-vectors`.
 
----
-
 ## 7. Design decisions & trade-offs
 
-- **DuckDB for facts, Qdrant for names.** Numbers always come from SQL. Vectors only help pick *which* entity was meant.
+- **DuckDB for facts, Chroma for names.** Numbers always come from SQL. Vectors only help pick *which* entity was meant.
 - **No text-to-SQL.** There is a fixed tool set (`find_products`, `count_products`, `chemicals_for`, `trend_by_year`, `dataset_coverage`, `dq_summary`, plus `compare`/`summarize` compositions). SQL is built from enum-whitelisted fragments with bound parameters, and the connection is read-only with external access disabled.
 - **LangGraph used narrowly.** It provides a typed graph, conditional edges, `interrupt()` for clarification, and a checkpointer. There are no LangChain agents, retrievers or LLM wrappers. Gemini is called through a one-method `LLMClient` interface (`google-genai`, JSON-schema output, Pydantic-validated).
 - **Rules first, LLM second.** The system answers every example correctly with no LLM at all. Gemini improves paraphrase coverage and the readability of the details, and the verifier keeps its text grounded.
@@ -206,13 +209,13 @@ DuckDB is limited to `memory_limit=1GB` and 2 threads. If memory is still tight:
 ## 8. Known limitations
 
 - **Neither gte-large nor Gemini was run in the build environment.**
-  - Hugging Face downloads were blocked by that sandbox's network policy. The vector path was exercised end to end with the offline `hash-ngram` embedder (same Qdrant code, fusion and calibration).
+  - Hugging Face downloads were blocked by that sandbox's network policy. The vector path was exercised end to end with the offline `hash-ngram` embedder (same Chroma code, fusion and calibration).
   - Gemini was tested with a scripted fake client.
   - Run `chemrag doctor` on your machine to confirm the gte-large download and the exact Gemini 3.8 Flash model id (default `gemini-3.8-flash`, set with `CHEMRAG_LLM_MODEL`). Then run `make eval` without `--no-llm` to get LLM-mode numbers.
 - The rule-based extractor is pattern-driven. Unusual phrasing may be missed in no-LLM mode, which the held-out set shows. Gemini mode is meant to cover that.
 - Dates are handled at year granularity ("June 2019" becomes 2019).
 - Comparing more than one dimension at once (e.g. companies × categories) is not supported; `compare` uses the first entity type that has two or more values.
-- Embedded Qdrant allows one process per store at a time, so don't run two `chemrag` processes against the same index simultaneously.
+- Embedded Chroma is designed for a single process writing at a time, so don't run `chemrag build` while another `chemrag` process is using the same index.
 - Category membership follows the source data. A product re-categorised across subcategories counts in each of them.
 
 ## 9. Layout
@@ -225,7 +228,7 @@ chemrag/
                       query_agent, synthesizer, verifier, finalize
   etl/                build_db.py, cas.py, normalize.py
   query/              filters.py (Filters → parameterised WHERE), tools.py (SQL templates)
-  retrieval/          resolver.py, embed.py (gte-large / hash-ngram), vector_store.py (Qdrant), build_index.py
+  retrieval/          resolver.py, embed.py (gte-large / hash-ngram), vector_store.py (Chroma), build_index.py
   llm/                base.py (interface + LLM schemas), gemini_client.py, null_client.py, prompts/*.md
   render/cli_render.py, cli.py
 config/chemical_groups.yaml   evals/   tests/   docs/   scripts/profile_data.py   data/raw/

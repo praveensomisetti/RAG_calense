@@ -1,4 +1,4 @@
-# One-command local run:  make demo   (creates the venv, builds DuckDB + Qdrant index, asks sample questions)
+# One-command local run:  make demo   (creates the venv, builds DuckDB + Chroma index, asks sample questions)
 PY      ?= python3
 VENV    ?= .venv
 BIN     := $(VENV)/bin

@@ -3,7 +3,7 @@
 * ``thenlper/gte-large`` (default) via sentence-transformers, CPU-only, loaded lazily and tuned for an
   8 GB laptop (short max_seq_length, inference_mode, capped torch threads).
 * ``hash-ngram``: a dependency-free character-trigram hashing embedder. It is *not* semantic; it exists so
-  the vector path (Qdrant collections, fusion, tests) still works fully offline when the model cannot be
+  the vector path (Chroma collections, fusion, tests) still works fully offline when the model cannot be
   downloaded. The README is explicit about this.
 """
 

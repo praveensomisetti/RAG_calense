@@ -11,7 +11,7 @@
     "refusal_clarification_accuracy": 1.0,
     "mode": "no-llm",
     "vectors": "off",
-    "seconds_total": 1.5
+    "seconds_total": 1.3
   },
   "cases": [
     {
@@ -40,7 +40,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde or Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
       "confidence": "high",
-      "seconds": 0.07,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -68,7 +68,7 @@
       "warn_missing": [],
       "answer_short": "32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
       "confidence": "high",
-      "seconds": 0.1,
+      "seconds": 0.08,
       "pass": true
     },
     {
@@ -96,7 +96,7 @@
       "warn_missing": [],
       "answer_short": "927 products containing Retinyl palmitate (37 of them discontinued), reported by 71 companies.",
       "confidence": "high",
-      "seconds": 0.07,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 1,052 products from L'Oreal USA; most common: Titanium dioxide (1,052), Talc (1).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -153,7 +153,7 @@
       "warn_missing": [],
       "answer_short": "2 products containing Retinyl palmitate, discontinued in 2015, reported by 2 companies.",
       "confidence": "medium",
-      "seconds": 0.06,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -207,7 +207,7 @@
       "warn_missing": [],
       "answer_short": "Top companies by number of products containing Silica, crystalline (respirable): Nail Alliance - Entity (568), Oceana USA, Inc. (168), Hand & Nail Harmony, Inc (127).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -233,7 +233,7 @@
       "warn_missing": [],
       "answer_short": "No data in range. DiscontinuedDate in this dataset ranges from 2001-01-01 to 2020-06-12; there is no data for '2030'.",
       "confidence": "medium",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     },
     {
@@ -259,7 +259,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 1 product named 'Glovers Medicated Shampoo', of brand Glover's; most common: Coal tar (1), Estragole (1).",
       "confidence": "medium",
-      "seconds": 0.07,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -283,7 +283,7 @@
       "warn_missing": [],
       "answer_short": "I can't provide health or safety advice. This dataset records what companies reported to the California Safe Cosmetics Program; it does not assess safety, exposure or health risk. Factually: 108 products containing Formaldehyde (16 of them discontinued), reported by 20 companies.",
       "confidence": "medium",
-      "seconds": 0.06,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -309,7 +309,7 @@
       "warn_missing": [],
       "answer_short": "Main data-quality issues: discontinued_before_initial (2,866), cas_from_casid (1,915), removed_before_created (192); plus 254 exact duplicate rows.",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.03,
       "pass": true
     },
     {
@@ -362,7 +362,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 8 products of brand Revlon where the chemical was later removed; most common: Titanium dioxide (7), Carbon black (1).",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -388,7 +388,7 @@
       "warn_missing": [],
       "answer_short": "No answer: '13463-67-8' is not a valid CAS number (check digit fails); did you mean 13463-67-7.",
       "confidence": "low",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     }
   ]

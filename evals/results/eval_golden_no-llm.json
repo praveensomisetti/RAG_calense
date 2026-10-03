@@ -11,7 +11,7 @@
     "refusal_clarification_accuracy": 1.0,
     "mode": "no-llm",
     "vectors": "off",
-    "seconds_total": 4.3
+    "seconds_total": 3.3
   },
   "cases": [
     {
@@ -42,7 +42,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -72,7 +72,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde (13 of them discontinued), reported by 8 companies.",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -103,7 +103,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -159,7 +159,7 @@
       "warn_missing": [],
       "answer_short": "32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
       "confidence": "high",
-      "seconds": 0.1,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -191,7 +191,7 @@
       "warn_missing": [],
       "answer_short": "927 products containing Retinyl palmitate (37 of them discontinued), reported by 71 companies.",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -221,7 +221,7 @@
       "warn_missing": [],
       "answer_short": "1,107 products containing Cocamide DEA (348 of them discontinued), reported by 148 companies.",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -285,7 +285,7 @@
       "warn_missing": [],
       "answer_short": "5 chemicals reported across 60 products of brand Sally Hansen, in Nail Polish and Enamel; most common: Titanium dioxide (51), Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily) (15), Carbon black (8).",
       "confidence": "high",
-      "seconds": 0.09,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -309,7 +309,7 @@
       "warn_missing": [],
       "answer_short": "Which brand did you mean by 'Pure'?",
       "confidence": "low",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     },
     {
@@ -342,7 +342,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 1,052 products from L'Oreal USA; most common: Titanium dioxide (1,052), Talc (1).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -368,7 +368,7 @@
       "warn_missing": [],
       "answer_short": "No data in range. DiscontinuedDate in this dataset ranges from 2001-01-01 to 2020-06-12; there is no data for '2024'.",
       "confidence": "high",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     },
     {
@@ -398,7 +398,7 @@
       "warn_missing": [],
       "answer_short": "2 products containing Retinyl palmitate, discontinued in 2015, reported by 2 companies.",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -429,7 +429,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 8 products of brand Revlon where the chemical was later removed; most common: Titanium dioxide (7), Carbon black (1).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -455,7 +455,7 @@
       "warn_missing": [],
       "answer_short": "No data in range. ChemicalDateRemoved in this dataset ranges from 2000-01-01 to 2020-05-14; there is no data for '2103'. Note: 115 rows carry an invalid ChemicalDateRemoved in 2103/2104 (e.g. row 501); these are treated as 'removed, date unknown'.",
       "confidence": "high",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     },
     {
@@ -485,7 +485,7 @@
       "warn_missing": [],
       "answer_short": "Products in Nail Products by year of InitialDateReported: peak in 2019 (1,610); 2009: 867, 2020: 180 (total 6,920 products).",
       "confidence": "high",
-      "seconds": 0.09,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -515,7 +515,7 @@
       "warn_missing": [],
       "answer_short": "Products from American International Industries by year of MostRecentDateReported: peak in 2010 (802); 2009: 70, 2019: 1 (total 1,964 products).",
       "confidence": "high",
-      "seconds": 0.07,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -546,7 +546,7 @@
       "warn_missing": [],
       "answer_short": "Comparison \u2014 Makeup Products (non-permanent): 304 products; Nail Products: 443 products.",
       "confidence": "high",
-      "seconds": 0.1,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -576,7 +576,7 @@
       "warn_missing": [],
       "answer_short": "Top companies by number of products containing Silica, crystalline (respirable): Nail Alliance - Entity (568), Oceana USA, Inc. (168), Hand & Nail Harmony, Inc (127).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -607,7 +607,7 @@
       "warn_missing": [],
       "answer_short": "4,557 products first reported in 2019 (10 of them discontinued), reported by 120 companies. Top subcategories by number of products first reported in 2019: UV Gel Nail Polish (756), Nail Polish and Enamel (509), Eye Shadow (386).",
       "confidence": "high",
-      "seconds": 0.1,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -635,7 +635,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 1 product named 'Glover's Medicated Shampoo'; most common: Coal tar (1), Estragole (1).",
       "confidence": "high",
-      "seconds": 0.19,
+      "seconds": 0.11,
       "pass": true
     },
     {
@@ -659,7 +659,7 @@
       "warn_missing": [],
       "answer_short": "'Lipstick' is a generic name used by 28 products from 17 companies. Which product did you mean by 'Lipstick'? You can also add the brand or company to narrow it down.",
       "confidence": "low",
-      "seconds": 0.11,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -692,7 +692,7 @@
       "warn_missing": [],
       "answer_short": "No products found containing Bisphenol A (BPA), in Baby Products.",
       "confidence": "medium",
-      "seconds": 0.05,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -720,7 +720,7 @@
       "warn_missing": [],
       "answer_short": "Main data-quality issues: discontinued_before_initial (2,866), cas_from_casid (1,915), removed_before_created (192); plus 254 exact duplicate rows.",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.03,
       "pass": true
     },
     {
@@ -772,7 +772,7 @@
       "warn_missing": [],
       "answer_short": "I can't provide health or safety advice. This dataset records what companies reported to the California Safe Cosmetics Program; it does not assess safety, exposure or health risk. Factually: 32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
       "confidence": "medium",
-      "seconds": 0.1,
+      "seconds": 0.07,
       "pass": true
     },
     {
@@ -824,7 +824,7 @@
       "warn_missing": [],
       "answer_short": "Top companies by number of products in the whole dataset: American International Industries (1,964), Nail Alliance - Entity (1,583), Revlon Consumer Product Corporation (1,458).",
       "confidence": "medium",
-      "seconds": 0.07,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -876,7 +876,7 @@
       "warn_missing": [],
       "answer_short": "115 products discontinued between 2018-01-01 and 2020-06-12, reported by 36 companies.",
       "confidence": "medium",
-      "seconds": 0.07,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -906,7 +906,7 @@
       "warn_missing": [],
       "answer_short": "405 products containing Trade Secret (12 of them discontinued), reported by 17 companies.",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.04,
       "pass": true
     },
     {
@@ -932,7 +932,7 @@
       "warn_missing": [],
       "answer_short": "No answer: no confident match for 'glyphosate'; closest: Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily).",
       "confidence": "low",
-      "seconds": 0.02,
+      "seconds": 0.01,
       "pass": true
     },
     {
@@ -960,7 +960,7 @@
       "warn_missing": [],
       "answer_short": "1 chemical reported across 1 product from L'Oreal USA, excluding Titanium dioxide; most common: Talc (1).",
       "confidence": "medium",
-      "seconds": 0.05,
+      "seconds": 0.03,
       "pass": true
     },
     {
@@ -993,7 +993,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde (13 of them discontinued), reported by 8 companies. 13 products containing Acetaldehyde that are discontinued, reported by 3 companies.",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -1025,7 +1025,7 @@
       "warn_missing": [],
       "answer_short": "5 chemicals reported across 795 products containing All-trans retinoic acid or Retinol (Vitamin A) or Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily) or Retinyl acetate or Retinyl palmitate, in Skin Care Products; most common: Retinyl palmitate (355), Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily) (322), Retinol (Vitamin A) (143).",
       "confidence": "high",
-      "seconds": 0.07,
+      "seconds": 0.05,
       "pass": true
     }
   ]

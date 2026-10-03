@@ -3,7 +3,7 @@
 Pipeline per mention (short-circuits on success):
   1. CAS path      - normalise + check-digit validate, exact lookup
   2. exact/alias   - normalised alias table lookup (names, curated synonyms, company match keys)
-  3. fuzzy+vector  - rapidfuzz lexical score fused with calibrated gte-large cosine from Qdrant
+  3. fuzzy+vector  - rapidfuzz lexical score fused with calibrated gte-large cosine from Chroma
 No LLM is involved; every decision is reproducible from the candidate scores in the trace.
 """
 
@@ -63,7 +63,7 @@ class AliasRow:
 
 
 class VectorIndex:
-    """Lazy wrapper around the embedder + embedded Qdrant. Any failure -> unavailable (lexical-only)."""
+    """Lazy wrapper around the embedder + embedded Chroma. Any failure -> unavailable (lexical-only)."""
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -90,16 +90,15 @@ class VectorIndex:
         try:
             self.embedder = get_embedder(self.settings.embed_model, self.settings.torch_threads,
                                          self.settings.embed_batch)
-            self.store = VectorStore(self.settings.qdrant_path, ENTITIES)
+            self.store = VectorStore(self.settings.vector_path)
         except EmbeddingUnavailable as e:
             self.reason = str(e)
             return False
-        except Exception as e:  # pragma: no cover - e.g. qdrant storage locked
+        except Exception as e:  # pragma: no cover - e.g. corrupt or locked vector store
             self.reason = f"vector store unavailable: {e}"
             return False
         self.floor = float(manifest.get("semantic_floor", 0.0))
         self.has_products = bool(manifest.get("products_complete"))
-        self._product_store: VectorStore | None = None  # opened lazily: it is the large one
         return True
 
     def calibrate(self, raw: float) -> float:
@@ -118,10 +117,7 @@ class VectorIndex:
             must["brand_keys"] = brand_keys
         if company_keys:
             must["company_keys"] = company_keys
-        if self._product_store is None:
-            self._product_store = VectorStore(self.settings.qdrant_path, PRODUCTS)
-        return [(p, self.calibrate(s)) for p, s in
-                self._product_store.search(PRODUCTS, vec, limit, must=must or None)]
+        return [(p, self.calibrate(s)) for p, s in self.store.search(PRODUCTS, vec, limit, must=must or None)]
 
 
 class EntityResolver:
