@@ -223,7 +223,7 @@ The golden set covers:
 - data quality and coverage;
 - medical refusal, out-of-scope questions, prompt injection and missing entities.
 
-**Tests:** `make test` runs 85 pytest tests covering:
+**Tests:** `make test` runs 94 pytest tests covering:
 - CAS normaliser cases;
 - ETL invariants;
 - SQL values are always bound as parameters, never pasted into the SQL text;
