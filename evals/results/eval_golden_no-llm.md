@@ -2,8 +2,8 @@
 
 | metric | value |
 |---|---|
-| cases | 35 |
-| passed | 35 |
+| cases | 37 |
+| passed | 37 |
 | response_type_accuracy | 1.000 |
 | intent_accuracy | 1.000 |
 | entity_resolution_accuracy | 1.000 |
@@ -13,7 +13,7 @@
 | refusal_clarification_accuracy | 1.000 |
 | mode | no-llm |
 | vectors | off |
-| seconds_total | 3.600 |
+| seconds_total | 3.800 |
 
 | id | pass | type | values | cited ok | answer |
 |---|---|---|---|---|---|
@@ -48,7 +48,9 @@
 | missing_entity | ✅ | clarification | - | 0/0 | Which chemical, CAS number, brand, company or category do you mean? For example: 'Which pr |
 | relative_last_3_years | ✅ | answer | n_products | 25/25 | 115 products discontinued between 2018-01-01 and 2020-06-12, reported by 36 companies. |
 | trade_secret | ✅ | answer | n_products | 20/20 | 405 products containing Trade Secret (12 of them discontinued), reported by 17 companies. |
-| unknown_chemical | ✅ | no_data | - | 0/0 | No answer: no confident match for 'glyphosate'; closest: Retinol/retinyl esters (Prop 65 l |
+| unknown_chemical | ✅ | no_data | - | 0/0 | No answer: no confident match for 'glyphosate'. |
 | exclusion_loreal | ✅ | answer | chemicals | 1/1 | 1 chemical reported across 1 product from L'Oreal USA, excluding Titanium dioxide; most co |
 | multi_part_inherit | ✅ | answer | n_products/n_products_t2 | 24/24 | 30 products containing Acetaldehyde (13 of them discontinued), reported by 8 companies. 13 |
 | family_retinoids_skin | ✅ | answer | n_products/chemicals | 5/5 | 5 chemicals reported across 795 products containing All-trans retinoic acid or Retinol (Vi |
+| chemical_or_cas | ✅ | answer | n_products | 20/20 | 131 products containing Formaldehyde or Acetaldehyde (CAS 75-07-0) (25 of them discontinue |
+| absent_synonym_acetone | ✅ | no_data | - | 0/0 | No answer: no confident match for 'acetone'; closest: Acetaldehyde, Retinyl acetate, Aspir |

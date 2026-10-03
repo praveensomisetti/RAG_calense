@@ -105,7 +105,7 @@ RAG_calense/
 │   └── render/               Pretty terminal output
 │
 ├── evals/                    Evaluation: golden + held-out questions, independent ground truth
-├── tests/                    92 automated tests
+├── tests/                    94 automated tests
 ├── scripts/profile_data.py   The data profiling done before design
 └── docs/                     This guide, the generated graph diagram, profiling output
 ```
@@ -117,7 +117,7 @@ RAG_calense/
 ### `README.md`
 - **Contains:** setup steps (including Windows), the architecture diagram, a table of all agents, data-cleaning decisions with real numbers, evaluation results, the memory budget, design decisions and known limitations.
 - **Does:** it is the front door for anyone opening the repo.
-- **Why:** an interviewer usually reads the README first, so it states results honestly. That includes the held-out first run of 10/14, not only the in-sample 35/35.
+- **Why:** an interviewer usually reads the README first, so it states results honestly. That includes the held-out first run of 10/14, not only the in-sample 37/37.
 
 ### `PLAN.md`
 - **Contains:** the design plan written *before* coding: data findings, data model, architecture, agent specs, retrieval design, query layer, safety policy, output contract, evaluation plan and milestones. §14 records every place the build deviated from the plan, and why.
@@ -485,7 +485,7 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 ## 8. `evals/`: proving it works
 
 #### `evals/golden.yaml`
-- **Contains:** **35 test questions**, each with the expected response type, intents, canonical entities and required warnings.
+- **Contains:** **37 test questions**, each with the expected response type, intents, canonical entities and required warnings.
 - **Coverage:**
   - Every intent.
   - Misspellings, CAS-only and bare-digit CAS, and an invalid check digit.
@@ -498,7 +498,7 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 
 #### `evals/holdout.yaml`
 - **Contains:** 14 **paraphrased** questions written *after* the system was built, to test generalisation honestly.
-- **Why it matters:** the first untouched run passed **10/14**. That number is reported, and the failures led to general fixes. It shows the 35/35 golden score is optimistic, and that I measured generalisation rather than only in-sample accuracy.
+- **Why it matters:** the first untouched run passed **10/14**. That number is reported, and the failures led to general fixes. It shows the 37/37 golden score is optimistic, and that I measured generalisation rather than only in-sample accuracy.
 
 #### `evals/ground_truth.py`
 - **Contains:** hand-written pandas calculations over the **raw CSV**, one per question, plus a check that each cited row really supports the answer.
@@ -518,14 +518,14 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 
 #### `evals/results/`
 - **Contains:**
-  - the golden report (35/35 in rules-only mode),
+  - the golden report (37/37 in rules-only mode),
   - the held-out report,
   - **`holdout_first_run_untuned.md`**, the honest first run (10/14).
 - **Why committed:** reviewers can see the results without running anything.
 
 ---
 
-## 9. `tests/`: 92 automated tests
+## 9. `tests/`: 94 automated tests
 
 | File | What it proves |
 |---|---|
@@ -594,7 +594,7 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 | How do you prevent hallucinated numbers? | The short answer is templated from facts, LLM bullets must cite facts, and the verifier rejects any number not in the results. A test injects "31" and the system still answers 30. |
 | How do you handle ambiguity? | Exact match, then fuzzy and vector match. If two different entities are within 0.05 of each other, it asks. In the interactive CLI the graph pauses and resumes after your choice. |
 | What if the data is bigger? | Ingestion would move into DuckDB SQL (streaming, out-of-core), clean *distinct values* instead of rows, and load incrementally. Embedding cost barely grows because only names are embedded. |
-| How do you know it's right? | Independent pandas ground truth over the raw CSV, citation re-checking, 92 tests, and an honest held-out first run of 10/14. |
+| How do you know it's right? | Independent pandas ground truth over the raw CSV, citation re-checking, 94 tests, and an honest held-out first run of 10/14. |
 | Why gpt-5-mini? | The LLM only classifies, extracts and phrases, so a small model is enough at well under a cent per question. Per-answer token usage is reported. |
 
 ---

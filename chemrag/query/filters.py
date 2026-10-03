@@ -121,10 +121,15 @@ def compile_filters(f: Filters, alias: str = "f", exclude_trade_secret: bool = F
     # chemical listings pass exclude_trade_secret=True and report the count separately.
     if exclude_trade_secret and not f.include_trade_secret:
         w.append(f"NOT {alias}.is_trade_secret")
+    # Chemical names and CAS numbers both identify *the chemical*, so they are alternatives (OR):
+    # "contains formaldehyde or CAS 75-07-0" means either one.
+    chem_preds = []
     if f.chem_group_ids:
-        w.append(_in(f"{alias}.chem_group_id", f.chem_group_ids, p))
+        chem_preds.append(_in(f"{alias}.chem_group_id", f.chem_group_ids, p))
     if f.cas_numbers:
-        w.append(_in(f"{alias}.cas_number", f.cas_numbers, p))
+        chem_preds.append(_in(f"{alias}.cas_number", f.cas_numbers, p))
+    if chem_preds:
+        w.append(chem_preds[0] if len(chem_preds) == 1 else "(" + " OR ".join(chem_preds) + ")")
     if f.exclude_chem_group_ids:
         w.append(_in(f"{alias}.chem_group_id", f.exclude_chem_group_ids, p, negate=True))
     if f.company_keys:

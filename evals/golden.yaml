@@ -162,3 +162,12 @@
   type: answer
   intents: [list]
   entities: [Retinyl palmitate, Retinol (Vitamin A)]
+- id: chemical_or_cas
+  q: Which products contain formaldehyde or CAS 75-07-0?
+  type: answer
+  intents: [list]
+  entities: [Formaldehyde, Acetaldehyde]
+- id: absent_synonym_acetone
+  q: Which products contain acetone?
+  type: no_data
+  must_warn: [entity_not_found]

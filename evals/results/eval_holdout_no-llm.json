@@ -11,7 +11,7 @@
     "refusal_clarification_accuracy": 1.0,
     "mode": "no-llm",
     "vectors": "off",
-    "seconds_total": 1.3
+    "seconds_total": 1.4
   },
   "cases": [
     {
@@ -40,7 +40,7 @@
       "warn_missing": [],
       "answer_short": "30 products containing Acetaldehyde or Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -68,7 +68,7 @@
       "warn_missing": [],
       "answer_short": "32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
       "confidence": "high",
-      "seconds": 0.08,
+      "seconds": 0.1,
       "pass": true
     },
     {
@@ -125,7 +125,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 1,052 products from L'Oreal USA; most common: Titanium dioxide (1,052), Talc (1).",
       "confidence": "high",
-      "seconds": 0.04,
+      "seconds": 0.05,
       "pass": true
     },
     {
@@ -207,7 +207,7 @@
       "warn_missing": [],
       "answer_short": "Top companies by number of products containing Silica, crystalline (respirable): Nail Alliance - Entity (568), Oceana USA, Inc. (168), Hand & Nail Harmony, Inc (127).",
       "confidence": "high",
-      "seconds": 0.05,
+      "seconds": 0.06,
       "pass": true
     },
     {
@@ -362,7 +362,7 @@
       "warn_missing": [],
       "answer_short": "2 chemicals reported across 8 products of brand Revlon where the chemical was later removed; most common: Titanium dioxide (7), Carbon black (1).",
       "confidence": "high",
-      "seconds": 0.06,
+      "seconds": 0.07,
       "pass": true
     },
     {

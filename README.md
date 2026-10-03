@@ -51,7 +51,7 @@ chemrag build                     # first run downloads gte-large (~670 MB)
 #   optional: chemrag build --products   (also embeds 33k product names, ~10-25 min on CPU)
 
 # 8. Verify
-pytest -q                         # 86 tests
+pytest -q                         # 94 tests
 chemrag eval                      # golden set (writes evals/results/)
 
 # 9. Ask questions
@@ -97,7 +97,7 @@ The LLM does three small jobs per question: classify and split the question, ext
 | `gpt-5-mini` (**default**) | Best balance; reliable structured outputs | ~$0.003–0.006 |
 | `gpt-5-nano` | Cheapest; fine for a demo, slightly weaker on unusual phrasing | ~$0.001 |
 
-\*About 3 calls per question, ~4k input and ~1–2k output tokens with `reasoning_effort=low`. Prices change, so check OpenAI's pricing page. `chemrag ask ... --json` reports the tokens each answer used in `meta.llm_tokens`. A full `chemrag eval` (35 questions) costs roughly $0.10–0.25 with `gpt-5-mini`.
+\*About 3 calls per question, ~4k input and ~1–2k output tokens with `reasoning_effort=low`. Prices change, so check OpenAI's pricing page. `chemrag ask ... --json` reports the tokens each answer used in `meta.llm_tokens`. A full `chemrag eval` (37 questions) costs roughly $0.10–0.25 with `gpt-5-mini`.
 
 ---
 
@@ -198,7 +198,7 @@ Each run checks:
 
 | Set (no-LLM mode) | Cases | Passed | Answer correctness | Citation precision | Entity resolution |
 |---|---|---|---|---|---|
-| Golden (also used during development, so in-sample) | 35 | 35 | 1.00 | 1.00 | 1.00 |
+| Golden (also used during development, so in-sample) | 37 | 37 | 1.00 | 1.00 | 1.00 |
 | Held-out paraphrases, **first run before any fixes** | 14 | **10** | 0.60 | 1.00 | 0.86 |
 | Held-out after the generic fixes it exposed (now contaminated) | 14 | 14 | 1.00 | 1.00 | 1.00 |
 

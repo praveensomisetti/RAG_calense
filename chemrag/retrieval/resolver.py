@@ -46,7 +46,10 @@ def lexical_score(query: str, alias: str, **_: Any) -> float:
     q_tokens, a_tokens = set(query.split()), set(alias.split())
     coverage = len(q_tokens & a_tokens) / len(q_tokens) if q_tokens else 0.0
     ts = fuzz.token_set_ratio(query, alias) * (0.5 + 0.5 * coverage)
-    pr = fuzz.partial_ratio(query, alias) if len(query) >= 5 and len(alias) >= len(query) else 0.0
+    # Partial matching treats the query as a fragment of the alias, but only when some alias word starts like a
+    # query word: typos keep the beginning of a word, while "acetone" must not match the tail of "spironolactone".
+    aligned = any(a[:2] == q[:2] for q in q_tokens for a in a_tokens)
+    pr = fuzz.partial_ratio(query, alias) if len(query) >= 5 and len(alias) >= len(query) and aligned else 0.0
     return max(r, 0.9 * ts, 0.85 * pr)
 
 

@@ -213,6 +213,12 @@ def case_retinoids_skin():
     return {"n_products": d["CDPHId"].nunique(), "chemicals": chem_set(d), "row_ok": by_row(d)}
 
 
+def case_chemical_or_cas():
+    d = nd()
+    d = d[d["ChemicalName"].isin(FORMALDEHYDE) | (d["CasNumber"] == "75-07-0")]
+    return {"n_products": d["CDPHId"].nunique(), "row_ok": by_row(d)}
+
+
 def case_none():
     return {"row_ok": lambda row: True}
 
@@ -253,4 +259,6 @@ GROUND_TRUTH = {
     "exclusion_loreal": case_company_chemicals("L'Oreal USA", exclude=TIO2),
     "multi_part_inherit": case_acetaldehyde_multi,
     "family_retinoids_skin": case_retinoids_skin,
+    "chemical_or_cas": case_chemical_or_cas,
+    "absent_synonym_acetone": case_none,
 }

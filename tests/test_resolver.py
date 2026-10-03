@@ -61,8 +61,10 @@ def test_exact_group_beats_family(resolver):
     assert [c.display_name for c in r.chosen] == ["Talc"]
 
 
-def test_not_found(resolver):
-    assert res(resolver, "glyphosate", E.CHEMICAL).status == "not_found"
+@pytest.mark.parametrize("text", ["glyphosate", "acetone"])
+def test_not_found(resolver, text):
+    # acetone is the brief's synonym example but is not in this dataset; it must not match "spironolactone"
+    assert res(resolver, text, E.CHEMICAL).status == "not_found"
 
 
 def test_product_lookup(resolver):
