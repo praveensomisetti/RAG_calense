@@ -5,7 +5,7 @@ BIN     := $(VENV)/bin
 CHEMRAG := $(BIN)/chemrag
 Q       ?= Which products contain CAS 75-07-0?
 
-.PHONY: setup build build-products ask demo test eval eval-holdout lint doctor graph clean
+.PHONY: setup build build-products ask demo test eval eval-quick eval-holdout lint doctor graph clean
 
 $(BIN)/python:
 	$(PY) -m venv $(VENV)
@@ -41,6 +41,9 @@ test: setup
 
 eval: data/processed/cscp.duckdb
 	$(CHEMRAG) eval
+
+eval-quick: data/processed/cscp.duckdb
+	$(CHEMRAG) eval --quick
 
 eval-holdout: data/processed/cscp.duckdb
 	$(CHEMRAG) eval --holdout

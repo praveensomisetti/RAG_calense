@@ -1,0 +1,312 @@
+{
+  "metrics": {
+    "cases": 10,
+    "passed": 10,
+    "response_type_accuracy": 1.0,
+    "intent_accuracy": 1.0,
+    "entity_resolution_accuracy": 1.0,
+    "answer_correctness": 1.0,
+    "citation_precision": 1.0,
+    "warning_recall": 1.0,
+    "refusal_clarification_accuracy": 1.0,
+    "mode": "no-llm",
+    "vectors": "off",
+    "seconds_total": 1.2
+  },
+  "cases": [
+    {
+      "id": "cas_acetaldehyde",
+      "question": "Which products contain CAS 75-07-0?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "list"
+      ],
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Acetaldehyde"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true,
+        "n_discontinued": true
+      },
+      "values_ok": true,
+      "cited": 20,
+      "cited_ok": 20,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "30 products containing Acetaldehyde (CAS 75-07-0) (13 of them discontinued), reported by 8 companies.",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "synonym_vitamin_a_palmitate",
+      "question": "How many products contain vitamin A palmitate?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "lookup"
+      ],
+      "intents_got": [
+        "lookup"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Retinyl palmitate"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 25,
+      "cited_ok": 25,
+      "must_warn": [
+        "synonyms_merged"
+      ],
+      "warn_missing": [],
+      "answer_short": "927 products containing Retinyl palmitate (37 of them discontinued), reported by 71 companies.",
+      "confidence": "high",
+      "seconds": 0.05,
+      "pass": true
+    },
+    {
+      "id": "brand_subcategory_chemicals",
+      "question": "What chemicals are reported for Sally Hansen in Nail Polish and Enamel?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "list"
+      ],
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Sally Hansen",
+        "Nail Polish and Enamel"
+      ],
+      "entities_hit": 2,
+      "values": {
+        "n_products": true,
+        "chemicals": true
+      },
+      "values_ok": true,
+      "cited": 5,
+      "cited_ok": 5,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "5 chemicals reported across 60 products of brand Sally Hansen, in Nail Polish and Enamel; most common: Titanium dioxide (51), Retinol/retinyl esters (Prop 65 listing, > 10,000 IU daily) (15), Carbon black (8).",
+      "confidence": "high",
+      "seconds": 0.1,
+      "pass": true
+    },
+    {
+      "id": "ambiguous_brand_pure",
+      "question": "What chemicals are reported for brand \"Pure\"?",
+      "type_expected": "clarification",
+      "type_got": "clarification",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 0,
+      "cited_ok": 0,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Which brand did you mean by 'Pure'?",
+      "confidence": "low",
+      "seconds": 0.02,
+      "pass": true
+    },
+    {
+      "id": "discontinued_2024_out_of_range",
+      "question": "Show products discontinued in 2024 that had ChemicalName = talc",
+      "type_expected": "no_data",
+      "type_got": "no_data",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 0,
+      "cited_ok": 0,
+      "must_warn": [
+        "out_of_range_date"
+      ],
+      "warn_missing": [],
+      "answer_short": "No data in range. DiscontinuedDate in this dataset ranges from 2001-01-01 to 2020-06-12; there is no data for '2024'.",
+      "confidence": "high",
+      "seconds": 0.01,
+      "pass": true
+    },
+    {
+      "id": "trend_nail_products",
+      "question": "Summarize reporting trends over time for Nail Products",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "trend"
+      ],
+      "intents_got": [
+        "trend"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Nail Products"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "trend": true
+      },
+      "values_ok": true,
+      "cited": 12,
+      "cited_ok": 12,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Products in Nail Products by year of InitialDateReported: peak in 2019 (1,610); 2009: 867, 2020: 180 (total 6,920 products).",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "compare_carbon_black",
+      "question": "Compare the number of products with carbon black in Makeup Products vs Nail Products",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "compare"
+      ],
+      "intents_got": [
+        "compare"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Carbon black",
+        "Nail Products"
+      ],
+      "entities_hit": 2,
+      "values": {
+        "compare": true
+      },
+      "values_ok": true,
+      "cited": 26,
+      "cited_ok": 26,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "Comparison \u2014 Makeup Products (non-permanent): 304 products; Nail Products: 443 products.",
+      "confidence": "high",
+      "seconds": 0.07,
+      "pass": true
+    },
+    {
+      "id": "medical_refusal",
+      "question": "Is titanium dioxide safe for my kids?",
+      "type_expected": "refusal",
+      "type_got": "refusal",
+      "type_ok": true,
+      "intents_expected": null,
+      "intents_got": [
+        "lookup"
+      ],
+      "intent_ok": null,
+      "entities_expected": [],
+      "entities_hit": 0,
+      "values": {},
+      "values_ok": null,
+      "cited": 25,
+      "cited_ok": 25,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "I can't provide health or safety advice. This dataset records what companies reported to the California Safe Cosmetics Program; it does not assess safety, exposure or health risk. Factually: 32,054 products containing Titanium dioxide (3,885 of them discontinued), reported by 451 companies.",
+      "confidence": "medium",
+      "seconds": 0.08,
+      "pass": true
+    },
+    {
+      "id": "multi_part_inherit",
+      "question": "Which products contain acetaldehide, and how many were discontinued?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "list",
+        "lookup"
+      ],
+      "intents_got": [
+        "list",
+        "lookup"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Acetaldehyde"
+      ],
+      "entities_hit": 1,
+      "values": {
+        "n_products": true,
+        "n_products_t2": true
+      },
+      "values_ok": true,
+      "cited": 24,
+      "cited_ok": 24,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "30 products containing Acetaldehyde (13 of them discontinued), reported by 8 companies. 13 products containing Acetaldehyde that are discontinued, reported by 3 companies.",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    },
+    {
+      "id": "chemical_or_cas",
+      "question": "Which products contain formaldehyde or CAS 75-07-0?",
+      "type_expected": "answer",
+      "type_got": "answer",
+      "type_ok": true,
+      "intents_expected": [
+        "list"
+      ],
+      "intents_got": [
+        "list"
+      ],
+      "intent_ok": true,
+      "entities_expected": [
+        "Formaldehyde",
+        "Acetaldehyde"
+      ],
+      "entities_hit": 2,
+      "values": {
+        "n_products": true
+      },
+      "values_ok": true,
+      "cited": 20,
+      "cited_ok": 20,
+      "must_warn": [],
+      "warn_missing": [],
+      "answer_short": "131 products containing Formaldehyde or Acetaldehyde (CAS 75-07-0) (25 of them discontinued), reported by 27 companies.",
+      "confidence": "high",
+      "seconds": 0.06,
+      "pass": true
+    }
+  ]
+}

@@ -19,6 +19,20 @@ from evals.ground_truth import GROUND_TRUTH, raw
 
 HERE = Path(__file__).resolve().parent
 
+# Budget-friendly subset (~30 LLM calls): one question per behaviour the brief asks for.
+QUICK_IDS = [
+    "cas_acetaldehyde",                  # CAS lookup with citations
+    "multi_part_inherit",                # typo + two-part question
+    "chemical_or_cas",                   # brief example 1: chemical X or CAS
+    "brand_subcategory_chemicals",       # brief example 2: chemicals for brand in subcategory
+    "discontinued_2024_out_of_range",    # brief example 3: discontinued in 2024 -> no data in range
+    "trend_nail_products",               # brief example 4: trends over time
+    "synonym_vitamin_a_palmitate",       # synonym resolution
+    "ambiguous_brand_pure",              # ambiguity -> clarification
+    "compare_carbon_black",              # compare intent
+    "medical_refusal",                   # safety: medical advice refused
+]
+
 
 def _results(values: dict, sub_id: str) -> list:
     return [r for r in values.get("results", []) if r.subtask_id == sub_id]
@@ -63,8 +77,11 @@ def check_values(expected: dict, values: dict) -> dict[str, bool]:
 
 
 def main(no_llm: bool = False, only: list[str] | None = None, out_dir: Path | None = None,
-         set_name: str = "golden") -> int:
+         set_name: str = "golden", quick: bool = False) -> int:
     cases = yaml.safe_load((HERE / f"{set_name}.yaml").read_text())
+    if quick:
+        cases = [c for c in cases if c["id"] in QUICK_IDS]
+        set_name = f"{set_name}_quick"
     if only:
         cases = [c for c in cases if c["id"] in only]
     orch = Orchestrator(no_llm=no_llm)
@@ -142,4 +159,5 @@ def main(no_llm: bool = False, only: list[str] | None = None, out_dir: Path | No
 if __name__ == "__main__":
     import sys
 
-    raise SystemExit(main(no_llm="--no-llm" in sys.argv, set_name="holdout" if "--holdout" in sys.argv else "golden"))
+    raise SystemExit(main(no_llm="--no-llm" in sys.argv, set_name="holdout" if "--holdout" in sys.argv else "golden",
+                          quick="--quick" in sys.argv))

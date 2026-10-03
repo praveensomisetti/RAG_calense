@@ -55,3 +55,14 @@ def test_clarification_answer_supersedes():
 def test_subtask_loop():
     assert route_after_query(base(current=1)) == "next_subtask"
     assert route_after_query(base(current=2)) == "done"
+
+
+def test_quick_eval_ids_exist_in_golden_set():
+    from pathlib import Path
+
+    import yaml
+
+    from evals.run_eval import QUICK_IDS
+
+    golden = {c["id"] for c in yaml.safe_load((Path(__file__).parent.parent / "evals/golden.yaml").read_text())}
+    assert len(QUICK_IDS) == 10 and set(QUICK_IDS) <= golden

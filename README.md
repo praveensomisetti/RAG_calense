@@ -52,7 +52,8 @@ chemrag build                     # first run downloads gte-large (~670 MB)
 
 # 8. Verify
 pytest -q                         # 94 tests
-chemrag eval                      # golden set (writes evals/results/)
+chemrag eval --quick              # 10 representative questions (~30 LLM calls; budget-friendly)
+chemrag eval                      # full golden set, 37 questions (writes evals/results/)
 
 # 9. Ask questions
 chemrag ask "Which products contain CAS 75-07-0?"
@@ -97,7 +98,7 @@ The LLM does three small jobs per question: classify and split the question, ext
 | `gpt-5-mini` (**default**) | Best balance; reliable structured outputs | ~$0.003–0.006 |
 | `gpt-5-nano` | Cheapest; fine for a demo, slightly weaker on unusual phrasing | ~$0.001 |
 
-\*About 3 calls per question, ~4k input and ~1–2k output tokens with `reasoning_effort=low`. Prices change, so check OpenAI's pricing page. `chemrag ask ... --json` reports the tokens each answer used in `meta.llm_tokens`. A full `chemrag eval` (37 questions) costs roughly $0.10–0.25 with `gpt-5-mini`.
+\*About 3 calls per question, ~4k input and ~1–2k output tokens with `reasoning_effort=low`. Prices change, so check OpenAI's pricing page. `chemrag ask ... --json` reports the tokens each answer used in `meta.llm_tokens`. `chemrag eval --quick` (10 questions) costs roughly $0.03–0.06 with `gpt-5-mini`; the full set (37 questions) about $0.10–0.25.
 
 ---
 
@@ -185,7 +186,7 @@ Source: 114,635 rows × 22 columns. The ETL (`chemrag/etl/build_db.py`) writes t
 
 ## 5. Evaluation
 
-`make eval` runs [`evals/golden.yaml`](evals/golden.yaml), and `make eval-holdout` runs [`evals/holdout.yaml`](evals/holdout.yaml). Expected values come from **hand-written pandas over the raw CSV** ([`evals/ground_truth.py`](evals/ground_truth.py)), which shares no code with the system. Reports are in [`evals/results/`](evals/results).
+`make eval` runs [`evals/golden.yaml`](evals/golden.yaml), `make eval-quick` runs a fixed 10-question subset of it (one question per behaviour the brief asks for; listed in `evals/run_eval.py`), and `make eval-holdout` runs [`evals/holdout.yaml`](evals/holdout.yaml). Expected values come from **hand-written pandas over the raw CSV** ([`evals/ground_truth.py`](evals/ground_truth.py)), which shares no code with the system. Reports are in [`evals/results/`](evals/results).
 
 Each run checks:
 - response type,

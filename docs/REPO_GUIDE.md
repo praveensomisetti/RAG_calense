@@ -516,6 +516,17 @@ No LLM is used anywhere in ingestion. It is deterministic Python so the same fil
 
   It writes Markdown and JSON reports.
 
+- **Quick mode (`chemrag eval --quick`):** runs a fixed **10-question subset** for when LLM calls cost money. It covers:
+  - the brief's four example questions,
+  - CAS lookup,
+  - a typo plus a two-part question,
+  - synonyms,
+  - ambiguity,
+  - comparison,
+  - medical refusal.
+
+  That is about 30 LLM calls. The report is written as `eval_golden_quick_*`.
+
 #### `evals/results/`
 - **Contains:**
   - the golden report (37/37 in rules-only mode),
